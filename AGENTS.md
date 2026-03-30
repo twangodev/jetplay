@@ -12,7 +12,7 @@ IntelliJ Platform plugin providing native audio/video playback in JetBrains IDEs
 
 ## Project Structure
 
-- `src/main/kotlin/com/github/twangodev/jetplay/` — plugin source
+- `src/main/kotlin/dev/twango/jetplay/` — plugin source
 - `src/main/resources/META-INF/plugin.xml` — plugin descriptor
 - `gradle.properties` — plugin metadata and version config
 

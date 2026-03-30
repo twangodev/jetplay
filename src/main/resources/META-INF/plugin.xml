@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.github.twangodev.jetplay</id>
+    <id>dev.twango.jetplay</id>
     <name>jetplay</name>
     <vendor>twangodev</vendor>
 
