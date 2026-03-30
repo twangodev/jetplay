@@ -6,5 +6,6 @@
     <depends>com.intellij.modules.platform</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <fileEditorProvider implementation="dev.twango.jetplay.editor.MediaFileEditorProvider"/>
     </extensions>
 </idea-plugin>
