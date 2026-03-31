@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "changelog-sections": [
+    { "type": "feat", "section": "Added" },
+    { "type": "fix", "section": "Fixed" },
+    { "type": "perf", "section": "Changed" },
+    { "type": "refactor", "section": "Changed" },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "chore", "section": "Maintenance", "hidden": true },
+    { "type": "test", "section": "Testing", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true }
+  ],
+  "extra-files": [
+    {
+      "type": "generic",
+      "path": "gradle.properties"
+    }
+  ],
+  "packages": {
+    ".": {}
+  }
+}
