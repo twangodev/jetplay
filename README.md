@@ -5,7 +5,7 @@
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
 
 <!-- Plugin description -->
-Native audio and video playback for JetBrains IDEs. Open media files directly in the editor tab without needing an external player.
+Audio and video playback for JetBrains IDEs. Open media files directly in the editor tab without needing an external player.
 
 **Supported formats:**
 
