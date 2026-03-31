@@ -10,14 +10,6 @@ Audio and video playback for JetBrains IDEs. Open media files directly in the ed
 Supported formats: MP4, M4V, WebM, OGV, MP3, WAV, OGG, OGA, Opus, M4A, AAC, FLAC
 <!-- Plugin description end -->
 
-## Features
-
-- Open media files inline in the editor tab — just double-click in the project tree
-- Built-in HTML5 playback controls (play/pause, seek, volume, fullscreen)
-- Automatic IDE theme integration
-- Works with all JetBrains IDEs (IntelliJ IDEA, PyCharm, WebStorm, etc.)
-- Powered by JCEF (embedded Chromium) — no external dependencies
-
 ## Installation
 
 - Using the IDE built-in plugin system:
