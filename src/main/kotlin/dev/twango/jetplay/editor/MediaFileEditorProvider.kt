@@ -11,17 +11,14 @@ import com.intellij.ui.jcef.JBCefApp
 class MediaFileEditorProvider : FileEditorProvider, DumbAware {
 
     companion object {
-        private val VIDEO_EXTENSIONS = setOf("mp4", "webm")
-        private val AUDIO_EXTENSIONS = setOf("mp3", "ogg", "wav")
-        val SUPPORTED_EXTENSIONS = VIDEO_EXTENSIONS + AUDIO_EXTENSIONS
+        private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "webm", "ogv")
 
         fun isVideo(extension: String): Boolean = extension.lowercase() in VIDEO_EXTENSIONS
     }
 
     override fun accept(project: Project, file: VirtualFile): Boolean {
         if (!JBCefApp.isSupported()) return false
-        val ext = file.extension?.lowercase() ?: return false
-        return ext in SUPPORTED_EXTENSIONS
+        return file.fileType == MediaFileType.INSTANCE
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {

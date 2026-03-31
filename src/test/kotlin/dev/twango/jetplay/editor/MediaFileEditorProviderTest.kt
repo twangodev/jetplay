@@ -14,50 +14,50 @@ class MediaFileEditorProviderTest : BasePlatformTestCase() {
 
     fun testAcceptsMp4() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.mp4", "")
-        assertTrue(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.mp4", "").virtualFile
+        assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsWebm() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.webm", "")
-        assertTrue(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.webm", "").virtualFile
+        assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsMp3() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.mp3", "")
-        assertTrue(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.mp3", "").virtualFile
+        assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsOgg() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.ogg", "")
-        assertTrue(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.ogg", "").virtualFile
+        assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsWav() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.wav", "")
-        assertTrue(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.wav", "").virtualFile
+        assertTrue(provider.accept(project, file))
     }
 
     fun testRejectsTxt() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.txt", "")
-        assertFalse(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.txt", "").virtualFile
+        assertFalse(provider.accept(project, file))
     }
 
     fun testRejectsKt() {
         if (!JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.kt", "")
-        assertFalse(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.kt", "").virtualFile
+        assertFalse(provider.accept(project, file))
     }
 
     fun testRejectsWhenJcefUnsupported() {
         if (JBCefApp.isSupported()) return
-        val file = myFixture.configureByText("test.mp4", "")
-        assertFalse(provider.accept(project, file.virtualFile))
+        val file = myFixture.addFileToProject("test.mp4", "").virtualFile
+        assertFalse(provider.accept(project, file))
     }
 
     fun testEditorTypeId() {
