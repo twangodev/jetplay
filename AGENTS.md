@@ -13,7 +13,7 @@ IntelliJ Platform plugin providing native audio/video playback in JetBrains IDEs
 ## Project Structure
 
 - `src/main/kotlin/dev/twango/jetplay/` — plugin source
-- `src/main/resources/META-INF/plugin.xml` — plugin descriptor
+- `src/main/resources/META-INF/plugin.xml` — plugin descriptor (single source of truth for supported extensions)
 - `gradle.properties` — plugin metadata and version config
 
 ## Conventions
@@ -21,7 +21,7 @@ IntelliJ Platform plugin providing native audio/video playback in JetBrains IDEs
 - Follow IntelliJ Platform plugin conventions and API patterns
 - Use `FileEditorProvider` / `FileEditor` for registering custom editors
 - Keep the plugin lightweight — no unnecessary services or actions
-- Supported formats: MP4, WebM, MP3, OGG, WAV
+- Supported extensions are defined in `plugin.xml`, not hardcoded in Kotlin
 
 ## Build
 
