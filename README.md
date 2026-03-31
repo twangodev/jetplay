@@ -7,11 +7,7 @@
 <!-- Plugin description -->
 Audio and video playback for JetBrains IDEs. Open media files directly in the editor tab without needing an external player.
 
-**Supported formats:**
-
-| Video               | Audio                                    |
-|---------------------|------------------------------------------|
-| MP4, M4V, WebM, OGV | MP3, WAV, OGG, OGA, Opus, M4A, AAC, FLAC |
+Supported formats: MP4, M4V, WebM, OGV, MP3, WAV, OGG, OGA, Opus, M4A, AAC, FLAC
 <!-- Plugin description end -->
 
 ## Features
