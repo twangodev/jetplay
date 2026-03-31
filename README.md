@@ -1,8 +1,8 @@
 # jetplay
 
 ![Build](https://github.com/twangodev/jetplay/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
+[![Version](https://img.shields.io/jetbrains/plugin/v/31014.svg?logo=jetbrains)](https://plugins.jetbrains.com/plugin/31014)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/31014.svg)](https://plugins.jetbrains.com/plugin/31014)
 
 <!-- Plugin description -->
 Audio and video playback for JetBrains IDEs. Open media files directly in the editor tab without needing an external player.
