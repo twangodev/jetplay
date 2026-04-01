@@ -5,3 +5,4 @@
 .kotlin
 .qodana
 build
+src/main/resources/player/index.html
