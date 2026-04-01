@@ -1,3 +1,4 @@
+import com.github.javaparser.printer.concretesyntaxmodel.CsmElement.token
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -129,11 +130,24 @@ kover {
     }
 }
 
+val buildPlayerUi by tasks.registering(Exec::class) {
+    workingDir = file("ui")
+    commandLine("bash", "-lc", "npm run build")
+    inputs.dir("ui/src")
+    inputs.file("ui/index.html")
+    inputs.file("ui/vite.config.ts")
+    inputs.file("ui/package.json")
+    outputs.file("src/main/resources/player/index.html")
+}
+
 tasks {
+    processResources {
+        dependsOn(buildPlayerUi)
+    }
+
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
     }
-
 }
 
 intellijPlatformTesting {
