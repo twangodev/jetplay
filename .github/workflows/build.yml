@@ -39,6 +39,18 @@ jobs:
       - name: Fetch Sources
         uses: actions/checkout@v6
 
+      # Set up Node.js for building the player UI
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: ui
+
       # Set up the Java environment for the next steps
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -89,6 +101,18 @@ jobs:
       # Check out the current repository
       - name: Fetch Sources
         uses: actions/checkout@v6
+
+      # Set up Node.js for building the player UI
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: ui
 
       # Set up the Java environment for the next steps
       - name: Setup Java
@@ -177,6 +201,18 @@ jobs:
       # Check out the current repository
       - name: Fetch Sources
         uses: actions/checkout@v6
+
+      # Set up Node.js for building the player UI
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: ui
 
       # Set up the Java environment for the next steps
       - name: Setup Java
