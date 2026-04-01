@@ -4,42 +4,12 @@
   let { message }: { message: string } = $props()
 </script>
 
-<div class="error">
-  <div class="icon">
+<div class="flex-1 flex flex-col items-center justify-center gap-2.5">
+  <div class="text-error opacity-80 mb-1">
     <TriangleAlert size={32} strokeWidth={1.5} />
   </div>
-  <div class="title">Unable to play this file</div>
-  <div class="detail">{message}</div>
+  <div class="text-sm font-medium text-error">Unable to play this file</div>
+  <div class="text-xs text-muted max-w-[400px] text-center break-words leading-relaxed">
+    {message}
+  </div>
 </div>
-
-<style>
-  .error {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-  }
-
-  .icon {
-    color: var(--error);
-    opacity: 0.8;
-    margin-bottom: 4px;
-  }
-
-  .title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--error);
-  }
-
-  .detail {
-    font-size: 12px;
-    color: var(--text-muted);
-    max-width: 400px;
-    text-align: center;
-    word-break: break-word;
-    line-height: 1.5;
-  }
-</style>

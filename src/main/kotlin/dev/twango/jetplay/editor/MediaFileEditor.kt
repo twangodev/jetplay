@@ -33,15 +33,30 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     init {
         val extension = file.extension?.lowercase()
         if (MediaTranscoder.needsTranscoding(extension)) {
-            loadPlayer(state = "loading")
+            val reason = "${extension?.uppercase()} uses codecs not natively supported by the embedded browser. Converting to WebM (VP9/Opus) for playback."
+            loadPlayer(state = "loading", transcodingReason = reason)
             thread(name = "jetplay-transcode", isDaemon = true) {
                 try {
-                    val transcoded = MediaTranscoder.transcode(file.toNioPath().toFile())
+                    val transcoded = MediaTranscoder.transcode(file.toNioPath().toFile()) { percent ->
+                        SwingUtilities.invokeLater {
+                            browser.cefBrowser.executeJavaScript(
+                                "window.jetplayUpdateProgress?.($percent)", "", 0
+                            )
+                        }
+                    }
                     val url = transcoded.toURI().toString()
-                    SwingUtilities.invokeLater { loadPlayer(mediaUrl = url) }
+                    SwingUtilities.invokeLater {
+                        browser.cefBrowser.executeJavaScript(
+                            "window.jetplayReady?.('${escapeJs(url)}')", "", 0
+                        )
+                    }
                 } catch (e: Exception) {
                     log.warn("Transcoding failed for ${file.name}", e)
-                    SwingUtilities.invokeLater { loadPlayer(state = "error", errorMessage = e.message ?: "Unknown error") }
+                    SwingUtilities.invokeLater {
+                        browser.cefBrowser.executeJavaScript(
+                            "window.jetplayError?.('${escapeJs(e.message ?: "Unknown error")}')", "", 0
+                        )
+                    }
                 }
             }
         } else {
@@ -52,7 +67,8 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     private fun loadPlayer(
         mediaUrl: String? = null,
         state: String = "ready",
-        errorMessage: String = ""
+        errorMessage: String = "",
+        transcodingReason: String = ""
     ) {
         val config = buildString {
             append("<script>window.jetplay = {")
@@ -62,10 +78,10 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
             append("fileExtension: '${escapeJs(file.extension ?: "")}',")
             if (mediaUrl != null) append("mediaUrl: '${escapeJs(mediaUrl)}',")
             if (errorMessage.isNotEmpty()) append("errorMessage: '${escapeJs(errorMessage)}',")
+            if (transcodingReason.isNotEmpty()) append("transcodingReason: '${escapeJs(transcodingReason)}',")
             append("};</script>")
         }
 
-        // Inject config script before the app script
         val html = playerHtml.replace("</head>", "$config</head>")
         browser.loadHTML(html)
     }

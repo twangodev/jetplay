@@ -21,7 +21,7 @@ object MediaTranscoder {
         return extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
     }
 
-    fun transcode(inputFile: File): File {
+    fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }
 
         val grabber = FFmpegFrameGrabber(inputFile)
@@ -29,6 +29,7 @@ object MediaTranscoder {
 
         val hasVideo = grabber.videoCodec > 0
         val hasAudio = grabber.audioChannels > 0
+        val totalMicroseconds = grabber.lengthInTime
 
         val recorder = FFmpegFrameRecorder(outputFile, grabber.imageWidth, grabber.imageHeight, grabber.audioChannels)
         recorder.format = "webm"
@@ -46,10 +47,23 @@ object MediaTranscoder {
         }
         recorder.start()
 
+        var lastReportedTenth = -1L
         try {
             while (true) {
                 val frame = grabber.grabFrame(hasAudio, true, true, false, false) ?: break
                 recorder.record(frame)
+
+                if (totalMicroseconds > 0) {
+                    val pct = (grabber.timestamp.toDouble() * 100.0 / totalMicroseconds).coerceIn(0.0, 99.9)
+                    val tenth = (pct * 10).toLong()
+                    if (tenth != lastReportedTenth) {
+                        lastReportedTenth = tenth
+                        onProgress(pct)
+                    }
+                } else if (lastReportedTenth != -1L) {
+                    lastReportedTenth = -1L
+                    onProgress(-1.0)
+                }
             }
         } finally {
             recorder.stop()
@@ -58,6 +72,7 @@ object MediaTranscoder {
             grabber.release()
         }
 
+        onProgress(100.0)
         log.info("Transcoded ${inputFile.name} -> ${outputFile.name} (${outputFile.length() / 1024}KB)")
         return outputFile
     }

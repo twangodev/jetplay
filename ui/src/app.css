@@ -1,44 +1,49 @@
-:root {
-  --bg: #2b2b2b;
-  --bg-elevated: #313335;
-  --text: #bababa;
-  --text-muted: #787878;
-  --accent: #4a88c7;
-  --error: #e05555;
-  --border: #404040;
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #2b2b2b;
+  --color-elevated: #313335;
+  --color-primary: #bababa;
+  --color-muted: #787878;
+  --color-accent: #4a88c7;
+  --color-error: #e05555;
+  --color-border: #404040;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f5f5;
-    --bg-elevated: #ffffff;
-    --text: #2b2b2b;
-    --text-muted: #888888;
-    --accent: #2675bf;
-    --error: #c44040;
-    --border: #d0d0d0;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
-}
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-surface);
+    color: var(--color-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
+  #app {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 
-#app {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  @media (prefers-color-scheme: light) {
+    :root {
+      --color-surface: #f5f5f5;
+      --color-elevated: #ffffff;
+      --color-primary: #2b2b2b;
+      --color-muted: #888888;
+      --color-accent: #2675bf;
+      --color-error: #c44040;
+      --color-border: #d0d0d0;
+    }
+  }
 }

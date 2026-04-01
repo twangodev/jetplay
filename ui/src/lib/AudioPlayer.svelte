@@ -1,86 +1,125 @@
 <script lang="ts">
-  import { Music } from '@lucide/svelte'
+  import { Music, Play, Pause, SkipBack, SkipForward } from '@lucide/svelte'
+  import SeekBar from './SeekBar.svelte'
+  import VolumeControl from './VolumeControl.svelte'
 
   let { src, fileName, extension }: { src: string; fileName: string; extension: string } = $props()
+
+  let audioEl: HTMLAudioElement
+  let paused = $state(true)
+  let currentTime = $state(0)
+  let duration = $state(0)
+  let volume = $state(1)
+  let muted = $state(false)
+
+  function togglePlay() {
+    if (audioEl.paused) audioEl.play()
+    else audioEl.pause()
+  }
+
+  function skipBack() {
+    audioEl.currentTime = Math.max(0, audioEl.currentTime - 10)
+  }
+
+  function skipForward() {
+    audioEl.currentTime = Math.min(duration, audioEl.currentTime + 10)
+  }
+
+  function toggleMute() {
+    muted = !muted
+    audioEl.muted = muted
+  }
+
+  function setVolume(v: number) {
+    volume = v
+    audioEl.volume = v
+    if (v > 0) muted = false
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.code === 'Space') {
+      e.preventDefault()
+      togglePlay()
+    } else if (e.code === 'ArrowLeft') {
+      skipBack()
+    } else if (e.code === 'ArrowRight') {
+      skipForward()
+    }
+  }
 </script>
 
-<div class="audio-display">
-  <div class="artwork">
-    <Music size={40} strokeWidth={1.5} />
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+  class="flex-1 flex flex-col items-center justify-center gap-5 select-none p-8"
+  onkeydown={handleKeydown}
+  tabindex="-1"
+>
+  <audio
+    bind:this={audioEl}
+    {src}
+    ontimeupdate={() => (currentTime = audioEl.currentTime)}
+    ondurationchange={() => (duration = audioEl.duration)}
+    onplay={() => (paused = false)}
+    onpause={() => (paused = true)}
+  ></audio>
+
+  <!-- Artwork -->
+  <div class="w-20 h-20 rounded-2xl bg-elevated border border-border flex items-center justify-center text-muted shadow-md">
+    <Music size={36} strokeWidth={1.5} />
   </div>
 
-  <div class="meta">
-    <div class="filename">{fileName}</div>
+  <!-- Metadata -->
+  <div class="flex items-center gap-2 max-w-[400px]">
+    <span class="text-[15px] font-medium text-primary break-words leading-snug">
+      {fileName}
+    </span>
     {#if extension}
-      <span class="badge">{extension}</span>
+      <span class="shrink-0 text-[11px] font-medium tracking-wide uppercase text-muted border border-border px-1.5 py-0.5 rounded">
+        {extension}
+      </span>
     {/if}
   </div>
 
-  <div class="controls">
-    <audio controls {src}></audio>
+  <!-- Seek bar -->
+  <div class="w-full max-w-md">
+    <SeekBar
+      {currentTime}
+      {duration}
+      onseek={(t) => (audioEl.currentTime = t)}
+    />
   </div>
+
+  <!-- Transport controls -->
+  <div class="flex items-center gap-6">
+    <button
+      class="p-1.5 text-muted hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+      onclick={skipBack}
+    >
+      <SkipBack size={20} />
+    </button>
+    <button
+      class="w-11 h-11 rounded-full bg-primary text-surface flex items-center justify-center hover:opacity-80 transition-opacity border-none cursor-pointer"
+      onclick={togglePlay}
+    >
+      {#if paused}
+        <Play size={20} fill="currentColor" class="ml-0.5" />
+      {:else}
+        <Pause size={20} fill="currentColor" />
+      {/if}
+    </button>
+    <button
+      class="p-1.5 text-muted hover:text-primary transition-colors bg-transparent border-none cursor-pointer"
+      onclick={skipForward}
+    >
+      <SkipForward size={20} />
+    </button>
+  </div>
+
+  <!-- Volume -->
+  <VolumeControl
+    {volume}
+    {muted}
+    ontoggle={toggleMute}
+    onset={setVolume}
+  />
 </div>
-
-<style>
-  .audio-display {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    user-select: none;
-    padding: 32px;
-  }
-
-  .artwork {
-    width: 88px;
-    height: 88px;
-    border-radius: 18px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-  }
-
-  .meta {
-    text-align: center;
-  }
-
-  .filename {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text);
-    max-width: 400px;
-    word-break: break-word;
-    line-height: 1.4;
-  }
-
-  .badge {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-top: 6px;
-  }
-
-  .controls {
-    width: 100%;
-    max-width: 480px;
-  }
-
-  audio {
-    width: 100%;
-    height: 40px;
-    outline: none;
-    border-radius: 8px;
-  }
-</style>
