@@ -8,7 +8,9 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefBrowser
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
-import javax.swing.*
+import javax.swing.JComponent
+import javax.swing.JPanel
+import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 
 class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
@@ -25,6 +27,8 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
 
     private val isVideo = file.extension?.lowercase() in VIDEO_EXTENSIONS
     private val browser = JBCefBrowser()
+    @Volatile private var disposed = false
+    private var transcodeThread: Thread? = null
 
     private val component: JComponent = JPanel(BorderLayout()).apply {
         add(browser.component, BorderLayout.CENTER)
@@ -35,27 +39,41 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
         if (MediaTranscoder.needsTranscoding(extension)) {
             val reason = "${extension?.uppercase()} uses codecs not natively supported by the embedded browser. Converting to WebM (VP9/Opus) for playback."
             loadPlayer(state = "loading", transcodingReason = reason)
-            thread(name = "jetplay-transcode", isDaemon = true) {
+            transcodeThread = thread(name = "jetplay-transcode", isDaemon = true) {
                 try {
                     val transcoded = MediaTranscoder.transcode(file.toNioPath().toFile()) { percent ->
-                        SwingUtilities.invokeLater {
-                            browser.cefBrowser.executeJavaScript(
-                                "window.jetplayUpdateProgress?.($percent)", "", 0
-                            )
+                        if (!disposed) {
+                            SwingUtilities.invokeLater {
+                                if (!disposed) {
+                                    browser.cefBrowser.executeJavaScript(
+                                        "window.jetplayUpdateProgress?.($percent)", "", 0
+                                    )
+                                }
+                            }
                         }
                     }
                     val url = transcoded.toURI().toString()
-                    SwingUtilities.invokeLater {
-                        browser.cefBrowser.executeJavaScript(
-                            "window.jetplayReady?.('${escapeJs(url)}')", "", 0
-                        )
+                    if (!disposed) {
+                        SwingUtilities.invokeLater {
+                            if (!disposed) {
+                                browser.cefBrowser.executeJavaScript(
+                                    "window.jetplayReady?.('${escapeJs(url)}')", "", 0
+                                )
+                            }
+                        }
                     }
+                } catch (e: InterruptedException) {
+                    log.info("Transcoding interrupted for ${file.name}")
                 } catch (e: Exception) {
                     log.warn("Transcoding failed for ${file.name}", e)
-                    SwingUtilities.invokeLater {
-                        browser.cefBrowser.executeJavaScript(
-                            "window.jetplayError?.('${escapeJs(e.message ?: "Unknown error")}')", "", 0
-                        )
+                    if (!disposed) {
+                        SwingUtilities.invokeLater {
+                            if (!disposed) {
+                                browser.cefBrowser.executeJavaScript(
+                                    "window.jetplayError?.('${escapeJs(e.message ?: "Unknown error")}')", "", 0
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -87,7 +105,13 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     }
 
     private fun escapeJs(s: String): String =
-        s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "")
+        s.replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "")
+            .replace("<", "\\x3c")
+            .replace(">", "\\x3e")
 
     override fun getComponent(): JComponent = component
     override fun getPreferredFocusedComponent(): JComponent = component
@@ -98,7 +122,10 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     override fun addPropertyChangeListener(listener: PropertyChangeListener) {}
     override fun removePropertyChangeListener(listener: PropertyChangeListener) {}
     override fun getFile(): VirtualFile = file
+
     override fun dispose() {
+        disposed = true
+        transcodeThread?.interrupt()
         browser.dispose()
     }
 }
