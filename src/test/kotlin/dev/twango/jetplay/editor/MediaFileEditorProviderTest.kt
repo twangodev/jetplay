@@ -1,7 +1,6 @@
 package dev.twango.jetplay.editor
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.ui.jcef.JBCefApp
 
 class MediaFileEditorProviderTest : BasePlatformTestCase() {
 
@@ -13,50 +12,37 @@ class MediaFileEditorProviderTest : BasePlatformTestCase() {
     }
 
     fun testAcceptsMp4() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.mp4", "").virtualFile
         assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsWebm() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.webm", "").virtualFile
         assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsMp3() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.mp3", "").virtualFile
         assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsOgg() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.ogg", "").virtualFile
         assertTrue(provider.accept(project, file))
     }
 
     fun testAcceptsWav() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.wav", "").virtualFile
         assertTrue(provider.accept(project, file))
     }
 
     fun testRejectsTxt() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.txt", "").virtualFile
         assertFalse(provider.accept(project, file))
     }
 
     fun testRejectsKt() {
-        if (!JBCefApp.isSupported()) return
         val file = myFixture.addFileToProject("test.kt", "").virtualFile
-        assertFalse(provider.accept(project, file))
-    }
-
-    fun testRejectsWhenJcefUnsupported() {
-        if (JBCefApp.isSupported()) return
-        val file = myFixture.addFileToProject("test.mp4", "").virtualFile
         assertFalse(provider.accept(project, file))
     }
 

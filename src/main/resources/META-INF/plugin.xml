@@ -5,6 +5,7 @@
 
     <depends>com.intellij.modules.platform</depends>
 
+
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="Media"
                   implementationClass="dev.twango.jetplay.editor.MediaFileType"
