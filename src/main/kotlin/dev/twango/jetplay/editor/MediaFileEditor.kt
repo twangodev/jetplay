@@ -18,7 +18,7 @@ import kotlin.concurrent.thread
 class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
 
     companion object {
-        private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "webm", "ogv")
+        private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "mkv", "avi", "mov", "wmv", "flv", "webm", "ogv")
         private val log = Logger.getInstance(MediaFileEditor::class.java)
 
         private val playerHtml: String by lazy {

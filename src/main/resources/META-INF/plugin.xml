@@ -10,7 +10,7 @@
         <fileType name="Media"
                   implementationClass="dev.twango.jetplay.editor.MediaFileType"
                   fieldName="INSTANCE"
-                  extensions="mp4;m4v;webm;ogv;mp3;wav;ogg;oga;opus;m4a;aac;flac"/>
+                  extensions="mp4;m4v;mkv;avi;mov;wmv;flv;webm;ogv;mp3;wav;ogg;oga;opus;m4a;aac;wma;aiff;aif;flac"/>
         <fileEditorProvider implementation="dev.twango.jetplay.editor.MediaFileEditorProvider"/>
     </extensions>
 </idea-plugin>
