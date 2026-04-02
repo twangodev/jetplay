@@ -1,4 +1,4 @@
-package dev.twango.jetplay.editor
+package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
 import org.bytedeco.ffmpeg.global.avcodec

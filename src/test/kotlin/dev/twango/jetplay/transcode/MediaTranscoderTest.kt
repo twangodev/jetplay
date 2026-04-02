@@ -1,4 +1,4 @@
-package dev.twango.jetplay.editor
+package dev.twango.jetplay.transcode
 
 import org.junit.Assert.*
 import org.junit.Test
