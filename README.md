@@ -39,4 +39,4 @@ Supported formats: MP4, M4V, MKV, AVI, MOV, WMV, FLV, WebM, OGV, MP3, WAV, OGG, 
 ./gradlew runIde       # launch sandbox IDE with plugin loaded
 ```
 
-Requires JDK 21 and Node.js 22+.
+Requires JDK 17+ and Node.js 22+.
