@@ -7,6 +7,7 @@ import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
@@ -29,7 +30,7 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
 
     private val isVideo = file.extension?.lowercase() in VIDEO_EXTENSIONS
     private val browser = JBCefBrowser()
-    private val openLinkQuery = JBCefJSQuery.create(browser).apply {
+    private val openLinkQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
         addHandler { url ->
             BrowserUtil.browse(url)
             null
