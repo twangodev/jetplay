@@ -3,6 +3,7 @@
   import { formatTime } from './formatTime'
   import SeekBar from './SeekBar.svelte'
   import VolumeControl from './VolumeControl.svelte'
+  import Branding from './Branding.svelte'
 
   let { src, fileName }: { src: string; fileName: string } = $props()
 
@@ -121,4 +122,6 @@
       </div>
     </div>
   </div>
+
+  <Branding variant="video" />
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TriangleAlert } from '@lucide/svelte'
+  import Branding from './Branding.svelte'
 
   let { message }: { message: string } = $props()
 </script>
@@ -12,4 +13,6 @@
   <div class="text-xs text-muted max-w-[400px] text-center break-words leading-relaxed">
     {message}
   </div>
+
+  <Branding />
 </div>

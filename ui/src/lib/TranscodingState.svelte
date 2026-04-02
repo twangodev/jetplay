@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Loader2, Info, Lightbulb } from '@lucide/svelte'
+  import Branding from './Branding.svelte'
 
   let { fileName, progress, reason }: { fileName: string; progress: number; reason?: string } = $props()
 
@@ -56,6 +57,8 @@
       <span>Use <strong class="text-primary font-medium">.webm</strong>, <strong class="text-primary font-medium">.ogg</strong>, <strong class="text-primary font-medium">.opus</strong>, <strong class="text-primary font-medium">.wav</strong>, or <strong class="text-primary font-medium">.mp3</strong> files to play instantly without conversion.</span>
     </div>
   </div>
+
+  <Branding />
 </div>
 
 <style>

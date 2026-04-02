@@ -2,6 +2,7 @@
   import { Music, Play, Pause, SkipBack, SkipForward } from '@lucide/svelte'
   import SeekBar from './SeekBar.svelte'
   import VolumeControl from './VolumeControl.svelte'
+  import Branding from './Branding.svelte'
 
   let { src, fileName, extension }: { src: string; fileName: string; extension: string } = $props()
 
@@ -122,4 +123,6 @@
     ontoggle={toggleMute}
     onset={setVolume}
   />
+
+  <Branding />
 </div>

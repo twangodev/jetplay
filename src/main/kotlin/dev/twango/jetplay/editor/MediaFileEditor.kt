@@ -1,11 +1,13 @@
 package dev.twango.jetplay.editor
 
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefJSQuery
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
@@ -27,6 +29,12 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
 
     private val isVideo = file.extension?.lowercase() in VIDEO_EXTENSIONS
     private val browser = JBCefBrowser()
+    private val openLinkQuery = JBCefJSQuery.create(browser).apply {
+        addHandler { url ->
+            BrowserUtil.browse(url)
+            null
+        }
+    }
     @Volatile private var disposed = false
     private var transcodeThread: Thread? = null
 
@@ -88,8 +96,11 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
         errorMessage: String = "",
         transcodingReason: String = ""
     ) {
+        val openLinkJs = openLinkQuery.inject("url")
         val config = buildString {
-            append("<script>window.jetplay = {")
+            append("<script>")
+            append("window.jetplayOpenLink = function(url) { $openLinkJs };")
+            append("window.jetplay = {")
             append("state: '${state}',")
             append("isVideo: ${isVideo},")
             append("fileName: '${escapeJs(file.name)}',")
@@ -126,6 +137,7 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     override fun dispose() {
         disposed = true
         transcodeThread?.interrupt()
+        openLinkQuery.dispose()
         browser.dispose()
     }
 }
