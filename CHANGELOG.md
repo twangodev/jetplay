@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.1.1](https://github.com/twangodev/jetplay/compare/v0.1.0...v0.1.1) (2026-04-02)
+
+
+### Fixed
+
+* lower minimum compatibility to IntelliJ 2022.3 ([ea125a8](https://github.com/twangodev/jetplay/commit/ea125a81bb6e803d3c59574fc96c1015f3eb392c))
+
 ## [0.1.0](https://github.com/twangodev/jetplay/compare/v0.0.1...v0.1.0) (2026-04-02)
 
 
