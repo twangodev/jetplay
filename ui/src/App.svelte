@@ -4,23 +4,6 @@
   import TranscodingState from './lib/TranscodingState.svelte'
   import ErrorState from './lib/ErrorState.svelte'
 
-  declare global {
-    interface Window {
-      jetplay?: {
-        mediaUrl?: string
-        fileName?: string
-        fileExtension?: string
-        isVideo?: boolean
-        state?: 'loading' | 'ready' | 'error'
-        errorMessage?: string
-        transcodingReason?: string
-      }
-      jetplayUpdateProgress?: (percent: number) => void
-      jetplayReady?: (mediaUrl: string) => void
-      jetplayError?: (message: string) => void
-    }
-  }
-
   const config = window.jetplay ?? {}
 
   let state = $state(config.state ?? 'ready')
