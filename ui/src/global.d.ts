@@ -7,11 +7,14 @@ declare global {
       fileName?: string
       fileExtension?: string
       isVideo?: boolean
-      state?: 'loading' | 'ready' | 'error'
+      state?: 'downloading' | 'loading' | 'ready' | 'error'
       errorMessage?: string
       transcodingReason?: string
+      downloadingReason?: string
     }
     jetplayUpdateProgress?: (percent: number) => void
+    jetplayUpdateDownloadProgress?: (percent: number) => void
+    jetplayStartTranscoding?: () => void
     jetplayReady?: (mediaUrl: string) => void
     jetplayError?: (message: string) => void
     jetplayOpenLink?: (url: string) => void

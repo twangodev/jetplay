@@ -27,6 +27,7 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
             config.mediaUrl?.let { append("mediaUrl: '${PlayerBridge.escapeJs(it)}',") }
             if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerBridge.escapeJs(config.errorMessage)}',")
             if (config.transcodingReason.isNotEmpty()) append("transcodingReason: '${PlayerBridge.escapeJs(config.transcodingReason)}',")
+            if (config.downloadingReason.isNotEmpty()) append("downloadingReason: '${PlayerBridge.escapeJs(config.downloadingReason)}',")
             append("};</script>")
         }
 }

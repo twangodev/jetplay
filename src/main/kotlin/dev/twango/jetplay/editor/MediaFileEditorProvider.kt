@@ -5,7 +5,10 @@ import com.intellij.openapi.fileEditor.FileEditorPolicy
 import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import dev.twango.jetplay.media.LocalFileMediaSource
+import dev.twango.jetplay.media.RemoteFileMediaSource
 
 class MediaFileEditorProvider : FileEditorProvider, DumbAware {
 
@@ -14,7 +17,12 @@ class MediaFileEditorProvider : FileEditorProvider, DumbAware {
     }
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        return MediaFileEditor(file)
+        val source = if (file.fileSystem is LocalFileSystem) {
+            LocalFileMediaSource(file)
+        } else {
+            RemoteFileMediaSource(file)
+        }
+        return MediaFileEditor(file, source)
     }
 
     override fun getEditorTypeId(): String = "media-player"

@@ -7,5 +7,6 @@ data class PlayerConfig(
     val fileExtension: String = "",
     val mediaUrl: String? = null,
     val errorMessage: String = "",
-    val transcodingReason: String = ""
+    val transcodingReason: String = "",
+    val downloadingReason: String = ""
 )

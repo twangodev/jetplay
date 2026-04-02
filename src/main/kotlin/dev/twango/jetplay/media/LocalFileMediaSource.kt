@@ -14,7 +14,9 @@ class LocalFileMediaSource(private val file: VirtualFile) : MediaSource {
 
     override val needsTranscoding: Boolean = MediaTranscoder.needsTranscoding(extension)
 
+    override val isRemote: Boolean = false
+
     override fun resolvePlayableUrl(): String = file.toNioPath().toUri().toString()
 
-    fun toLocalFile(): File = file.toNioPath().toFile()
+    override fun toLocalFile(): File = file.toNioPath().toFile()
 }

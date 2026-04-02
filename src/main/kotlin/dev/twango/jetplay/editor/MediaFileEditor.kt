@@ -8,19 +8,24 @@ import com.intellij.ui.jcef.JBCefBrowser
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerConfig
 import dev.twango.jetplay.browser.PlayerHtmlLoader
-import dev.twango.jetplay.media.LocalFileMediaSource
+import dev.twango.jetplay.media.MediaSource
+import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.TranscodeSession
+import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
+class MediaFileEditor(
+    private val file: VirtualFile,
+    private val source: MediaSource
+) : UserDataHolderBase(), FileEditor {
 
     private val browser = JBCefBrowser()
     private val bridge = PlayerBridge(browser)
     private val htmlLoader = PlayerHtmlLoader(bridge)
-    private val source = LocalFileMediaSource(file)
+    private var downloadSession: DownloadSession? = null
     private var transcodeSession: TranscodeSession? = null
 
     private val component: JComponent = JPanel(BorderLayout()).apply {
@@ -28,7 +33,38 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     }
 
     init {
-        if (source.needsTranscoding) {
+        if (source.isRemote) {
+            startDownload()
+        } else if (source.needsTranscoding) {
+            startTranscoding()
+        } else {
+            playDirectly()
+        }
+    }
+
+    private fun startDownload() {
+        htmlLoader.load(
+            PlayerConfig(
+                state = "downloading",
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                downloadingReason = "This file is on a remote host. Downloading to enable local playback."
+            )
+        )
+        downloadSession = DownloadSession(source as RemoteFileMediaSource, bridge) {
+            if (source.needsTranscoding) {
+                startTranscoding()
+            } else {
+                bridge.mediaReady(source.resolvePlayableUrl())
+            }
+        }.also { it.start() }
+    }
+
+    private fun startTranscoding() {
+        if (source.isRemote) {
+            bridge.executeJs("window.jetplayStartTranscoding?.()")
+        } else {
             htmlLoader.load(
                 PlayerConfig(
                     state = "loading",
@@ -38,17 +74,19 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
                     transcodingReason = "${source.extension.uppercase()} uses codecs not natively supported by the embedded browser. Converting to WebM (VP9/Opus) for playback."
                 )
             )
-            transcodeSession = TranscodeSession(source.toLocalFile(), bridge).also { it.start() }
-        } else {
-            htmlLoader.load(
-                PlayerConfig(
-                    isVideo = source.isVideo,
-                    fileName = source.fileName,
-                    fileExtension = source.extension,
-                    mediaUrl = source.resolvePlayableUrl()
-                )
-            )
         }
+        transcodeSession = TranscodeSession(source.toLocalFile(), bridge).also { it.start() }
+    }
+
+    private fun playDirectly() {
+        htmlLoader.load(
+            PlayerConfig(
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                mediaUrl = source.resolvePlayableUrl()
+            )
+        )
     }
 
     override fun getComponent(): JComponent = component
@@ -62,6 +100,7 @@ class MediaFileEditor(private val file: VirtualFile) : UserDataHolderBase(), Fil
     override fun getFile(): VirtualFile = file
 
     override fun dispose() {
+        downloadSession?.cancel()
         transcodeSession?.cancel()
         bridge.dispose()
     }
