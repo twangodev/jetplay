@@ -2,6 +2,26 @@
 
 # jetplay Changelog
 
+## [0.2.0](https://github.com/twangodev/jetplay/compare/v0.1.1...v0.2.0) (2026-04-03)
+
+
+### Added
+
+* add i18n support, FFmpeg availability check, and balloon notifications ([7a994f0](https://github.com/twangodev/jetplay/commit/7a994f0c16529a51f5f2c288c8985c5f8cbe28a9))
+* add remote media playback support ([6c74205](https://github.com/twangodev/jetplay/commit/6c7420595af463b609af2a9cfb66d3322c25a90c))
+
+
+### Fixed
+
+* downgrade Kotlin version from 2.3.20 to 2.1.20 in libs.versions.toml ([e4c4e56](https://github.com/twangodev/jetplay/commit/e4c4e56bb9240259ad70eb1e3dfbc3d8fe47c333))
+* **i18n:** pass translated UI strings to Svelte instead of hardcoded English text ([0ca637e](https://github.com/twangodev/jetplay/commit/0ca637e6fb6ef21f05655edf8de187ea6972137f))
+
+
+### Changed
+
+* decompose MediaFileEditor into modular package architecture ([166c220](https://github.com/twangodev/jetplay/commit/166c220675bdc801d9b56c423c8a79ec909dff2c))
+* rearrange time display and file name layout in VideoPlayer component ([cd79186](https://github.com/twangodev/jetplay/commit/cd79186b4851607b800a2caa025241b5af76e0f7))
+
 ## [0.1.1](https://github.com/twangodev/jetplay/compare/v0.1.0...v0.1.1) (2026-04-02)
 
 
