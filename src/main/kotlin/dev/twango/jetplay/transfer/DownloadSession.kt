@@ -2,6 +2,7 @@ package dev.twango.jetplay.transfer
 
 import com.intellij.openapi.diagnostic.Logger
 import dev.twango.jetplay.JetPlayBundle
+import dev.twango.jetplay.JetPlayConstants
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import java.io.File
@@ -10,7 +11,7 @@ import kotlin.concurrent.thread
 class DownloadSession(
     private val source: RemoteFileMediaSource,
     private val bridge: PlayerBridge,
-    private val onComplete: (File) -> Unit
+    private val onComplete: (File) -> Unit,
 ) {
 
     companion object {
@@ -54,7 +55,7 @@ class DownloadSession(
 
                 if (!cancelled) {
                     source.setLocalFile(tempFile)
-                    log.info("Downloaded ${source.fileName} (${tempFile.length() / 1024} KB)")
+                    log.info("Downloaded ${source.fileName} (${tempFile.length() / JetPlayConstants.BYTES_PER_KB} KB)")
                     onComplete(tempFile)
                 }
             } catch (_: InterruptedException) {
@@ -62,7 +63,8 @@ class DownloadSession(
             } catch (e: Exception) {
                 log.warn("Download failed for ${source.fileName}", e)
                 if (!cancelled) {
-                    bridge.showError(JetPlayBundle.message("error.download", e.message ?: JetPlayBundle.message("error.unknown")))
+                    val errorMsg = e.message ?: JetPlayBundle.message("error.unknown")
+                    bridge.showError(JetPlayBundle.message("error.download", errorMsg))
                 }
             }
         }

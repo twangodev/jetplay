@@ -9,12 +9,12 @@ data class PlayerConfig(
     val errorMessage: String = "",
     val transcodingReason: String = "",
     val downloadingReason: String = "",
-    val ui: UiStrings = UiStrings()
+    val ui: UiStrings = UiStrings(),
 )
 
 data class UiStrings(
     val downloadingLabel: String = "",
     val transcodingLabel: String = "",
     val transcodingTip: String = "",
-    val errorTitle: String = ""
+    val errorTitle: String = "",
 )

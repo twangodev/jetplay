@@ -4,16 +4,19 @@ junit = "4.13.2"
 opentest4j = "1.3.0"
 
 # plugins
+detekt = "2.0.0-alpha.2"
 intelliJPlatform = "2.13.1"
 kotlin = "2.3.20"
 kover = "0.9.7"
 qodana = "2025.3.2"
 
 [libraries]
+detekt-formatting = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 opentest4j = { group = "org.opentest4j", name = "opentest4j", version.ref = "opentest4j" }
 
 [plugins]
+detekt = { id = "dev.detekt", version.ref = "detekt" }
 intelliJPlatform = { id = "org.jetbrains.intellij.platform", version.ref = "intelliJPlatform" }
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

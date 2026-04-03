@@ -28,9 +28,8 @@ class RemoteFileMediaSource(private val file: VirtualFile) : MediaSource {
         localFile = file
     }
 
-    override fun resolvePlayableUrl(): String =
-        localFile?.toURI()?.toString() ?: error("Remote file not yet downloaded")
+    override fun resolvePlayableUrl(): String = localFile?.toURI()?.toString()
+        ?: error("Remote file not yet downloaded")
 
-    override fun toLocalFile(): File =
-        localFile ?: error("Remote file not yet downloaded")
+    override fun toLocalFile(): File = localFile ?: error("Remote file not yet downloaded")
 }

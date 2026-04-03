@@ -6,10 +6,7 @@ import dev.twango.jetplay.browser.PlayerBridge
 import java.io.File
 import kotlin.concurrent.thread
 
-class TranscodeSession(
-    private val inputFile: File,
-    private val bridge: PlayerBridge
-) {
+class TranscodeSession(private val inputFile: File, private val bridge: PlayerBridge) {
 
     companion object {
         private val log = Logger.getInstance(TranscodeSession::class.java)

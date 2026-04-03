@@ -29,17 +29,13 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         }
     }
 
-    fun updateProgress(percent: Double) =
-        executeJs("window.jetplayUpdateProgress?.($percent)")
+    fun updateProgress(percent: Double) = executeJs("window.jetplayUpdateProgress?.($percent)")
 
-    fun updateDownloadProgress(percent: Double) =
-        executeJs("window.jetplayUpdateDownloadProgress?.($percent)")
+    fun updateDownloadProgress(percent: Double) = executeJs("window.jetplayUpdateDownloadProgress?.($percent)")
 
-    fun mediaReady(url: String) =
-        executeJs("window.jetplayReady?.('${escapeJs(url)}')")
+    fun mediaReady(url: String) = executeJs("window.jetplayReady?.('${escapeJs(url)}')")
 
-    fun showError(message: String) =
-        executeJs("window.jetplayError?.('${escapeJs(message)}')")
+    fun showError(message: String) = executeJs("window.jetplayError?.('${escapeJs(message)}')")
 
     fun loadHtml(html: String) = browser.loadHTML(html)
 
@@ -50,13 +46,12 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     }
 
     companion object {
-        fun escapeJs(s: String): String =
-            s.replace("\\", "\\\\")
-                .replace("'", "\\'")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "")
-                .replace("<", "\\x3c")
-                .replace(">", "\\x3e")
+        fun escapeJs(s: String): String = s.replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "")
+            .replace("<", "\\x3c")
+            .replace(">", "\\x3e")
     }
 }
