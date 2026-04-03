@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transfer
 
 import com.intellij.openapi.diagnostic.Logger
+import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import java.io.File
@@ -61,7 +62,7 @@ class DownloadSession(
             } catch (e: Exception) {
                 log.warn("Download failed for ${source.fileName}", e)
                 if (!cancelled) {
-                    bridge.showError("Download failed: ${e.message ?: "Unknown error"}")
+                    bridge.showError(JetPlayBundle.message("error.download", e.message ?: JetPlayBundle.message("error.unknown")))
                 }
             }
         }

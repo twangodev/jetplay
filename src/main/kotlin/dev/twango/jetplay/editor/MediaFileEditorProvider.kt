@@ -22,7 +22,7 @@ class MediaFileEditorProvider : FileEditorProvider, DumbAware {
         } else {
             RemoteFileMediaSource(file)
         }
-        return MediaFileEditor(file, source)
+        return MediaFileEditor(project, file, source)
     }
 
     override fun getEditorTypeId(): String = "media-player"

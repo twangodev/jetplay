@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.browser.PlayerBridge
 import java.io.File
 import kotlin.concurrent.thread
@@ -34,7 +35,7 @@ class TranscodeSession(
             } catch (e: Exception) {
                 log.warn("Transcoding failed for ${inputFile.name}", e)
                 if (!cancelled) {
-                    bridge.showError(e.message ?: "Unknown error")
+                    bridge.showError(e.message ?: JetPlayBundle.message("error.unknown"))
                 }
             }
         }

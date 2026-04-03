@@ -1,15 +1,23 @@
 package dev.twango.jetplay.editor
 
+import com.intellij.ide.BrowserUtil
+import com.intellij.notification.NotificationAction
+import com.intellij.notification.NotificationGroupManager
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.jcef.JBCefBrowser
+import dev.twango.jetplay.JetPlayBundle
+import dev.twango.jetplay.JetPlayConstants
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerConfig
 import dev.twango.jetplay.browser.PlayerHtmlLoader
 import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
+import dev.twango.jetplay.transcode.FfmpegAvailability
 import dev.twango.jetplay.transcode.TranscodeSession
 import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
@@ -18,6 +26,7 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 class MediaFileEditor(
+    private val project: Project,
     private val file: VirtualFile,
     private val source: MediaSource
 ) : UserDataHolderBase(), FileEditor {
@@ -49,7 +58,7 @@ class MediaFileEditor(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 fileExtension = source.extension,
-                downloadingReason = "This file is on a remote host. Downloading to enable local playback."
+                downloadingReason = JetPlayBundle.message("downloading.reason")
             )
         )
         downloadSession = DownloadSession(source as RemoteFileMediaSource, bridge) {
@@ -62,6 +71,10 @@ class MediaFileEditor(
     }
 
     private fun startTranscoding() {
+        if (!FfmpegAvailability.available) {
+            showTranscodingError()
+            return
+        }
         if (source.isRemote) {
             bridge.executeJs("window.jetplayStartTranscoding?.()")
         } else {
@@ -71,7 +84,7 @@ class MediaFileEditor(
                     isVideo = source.isVideo,
                     fileName = source.fileName,
                     fileExtension = source.extension,
-                    transcodingReason = "${source.extension.uppercase()} uses codecs not natively supported by the embedded browser. Converting to WebM (VP9/Opus) for playback."
+                    transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase())
                 )
             )
         }
@@ -89,9 +102,24 @@ class MediaFileEditor(
         )
     }
 
+    private fun showTranscodingError() {
+        bridge.showError(JetPlayBundle.message("error.transcoding.message"))
+        NotificationGroupManager.getInstance()
+            .getNotificationGroup(JetPlayConstants.NOTIFICATION_GROUP_ID)
+            .createNotification(
+                JetPlayBundle.message("error.transcoding.notification.title"),
+                JetPlayBundle.message("error.transcoding.notification.content", source.extension.uppercase()),
+                NotificationType.WARNING
+            )
+            .addAction(NotificationAction.createSimpleExpiring(JetPlayBundle.message("action.report.issue")) {
+                BrowserUtil.browse(JetPlayConstants.ISSUES_URL)
+            })
+            .notify(project)
+    }
+
     override fun getComponent(): JComponent = component
     override fun getPreferredFocusedComponent(): JComponent = component
-    override fun getName(): String = "Media Player"
+    override fun getName(): String = JetPlayBundle.message("editor.name")
     override fun setState(state: FileEditorState) {}
     override fun isModified(): Boolean = false
     override fun isValid(): Boolean = file.isValid
