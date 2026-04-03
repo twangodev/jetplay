@@ -1,16 +1,16 @@
 complexity:
   LongMethod:
-    threshold: 80
+    allowedLines: 80
   LongParameterList:
-    functionThreshold: 8
-    constructorThreshold: 10
+    allowedFunctionParameters: 8
+    allowedConstructorParameters: 10
   TooManyFunctions:
-    thresholdInClasses: 15
-    thresholdInFiles: 15
+    allowedFunctionsPerClass: 15
+    allowedFunctionsPerFile: 15
   CyclomaticComplexMethod:
-    threshold: 20
+    allowedComplexity: 20
   NestedBlockDepth:
-    threshold: 5
+    allowedDepth: 5
 
 exceptions:
   TooGenericExceptionCaught:
@@ -33,12 +33,10 @@ style:
       - '2'
   MaxLineLength:
     maxLineLength: 140
-  UnnecessaryAbstractClass:
-    active: false
   WildcardImport:
     active: true
 
-formatting:
+ktlint:
   MaximumLineLength:
     maxLineLength: 140
   ArgumentListWrapping:

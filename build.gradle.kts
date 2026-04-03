@@ -117,13 +117,12 @@ kover {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("$projectDir/detekt.yml"))
-    basePath = projectDir.absolutePath
+    basePath.set(projectDir)
 }
 
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
     reports {
         html.required.set(true)
-        xml.required.set(true)
         sarif.required.set(true)
     }
 }

@@ -26,11 +26,9 @@ import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class MediaFileEditor(
-    private val project: Project,
-    private val file: VirtualFile,
-    private val source: MediaSource,
-) : UserDataHolderBase(), FileEditor {
+class MediaFileEditor(private val project: Project, private val file: VirtualFile, private val source: MediaSource) :
+    UserDataHolderBase(),
+    FileEditor {
 
     private val browser = JBCefBrowser()
     private val bridge = PlayerBridge(browser)

@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import dev.twango.jetplay.JetPlayConstants
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FFmpegFrameRecorder
@@ -19,7 +20,6 @@ object MediaTranscoder {
     private const val PROGRESS_COMPLETE = 100.0
     private const val PROGRESS_MAX = 99.9
     private const val PROGRESS_PRECISION = 10
-    private const val BYTES_PER_KB = 1024
 
     // Formats that JCEF (Chromium) can play natively without transcoding
     private val JCEF_NATIVE_EXTENSIONS = setOf(
@@ -35,9 +35,7 @@ object MediaTranscoder {
         "mp3",
     )
 
-    fun needsTranscoding(extension: String?): Boolean {
-        return extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
-    }
+    fun needsTranscoding(extension: String?): Boolean = extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
 
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }
@@ -102,7 +100,7 @@ object MediaTranscoder {
         }
 
         onProgress(PROGRESS_COMPLETE)
-        log.info("Transcoded ${inputFile.name} -> ${outputFile.name} (${outputFile.length() / BYTES_PER_KB}KB)")
+        log.info("Transcoded ${inputFile.name} -> ${outputFile.name} (${outputFile.length() / JetPlayConstants.BYTES_PER_KB}KB)")
         return outputFile
     }
 }
