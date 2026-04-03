@@ -101,14 +101,6 @@
           {/if}
         </button>
 
-        <span class="text-xs tabular-nums opacity-80">
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </span>
-
-        <span class="flex-1 text-xs text-center opacity-50 truncate px-4">
-          {fileName}
-        </span>
-
         <VolumeControl
           {volume}
           {muted}
@@ -119,6 +111,12 @@
           fillClass="bg-white/80"
           sliderWidth="group-hover/vol:w-16"
         />
+
+        <span class="text-xs tabular-nums opacity-80">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+
+        <span class="flex-1"></span>
       </div>
     </div>
   </div>
