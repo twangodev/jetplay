@@ -4,6 +4,7 @@ plugins {
     id("java")
     alias(libs.plugins.kotlin)
     alias(libs.plugins.intelliJPlatform)
+    alias(libs.plugins.detekt)
     alias(libs.plugins.qodana)
     alias(libs.plugins.kover)
 }
@@ -46,6 +47,8 @@ dependencies {
     implementation("org.bytedeco:javacpp:1.5.13:macosx-x86_64")
     implementation("org.bytedeco:javacpp:1.5.13:macosx-arm64")
     implementation("org.bytedeco:javacpp:1.5.13:windows-x86_64")
+
+    detektPlugins(libs.detekt.formatting)
 
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
@@ -108,6 +111,20 @@ kover {
                 onCheck = true
             }
         }
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(files("$projectDir/detekt.yml"))
+    basePath = projectDir.absolutePath
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        sarif.required.set(true)
     }
 }
 

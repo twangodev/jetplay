@@ -29,7 +29,7 @@ import javax.swing.JPanel
 class MediaFileEditor(
     private val project: Project,
     private val file: VirtualFile,
-    private val source: MediaSource
+    private val source: MediaSource,
 ) : UserDataHolderBase(), FileEditor {
 
     private val browser = JBCefBrowser()
@@ -41,7 +41,7 @@ class MediaFileEditor(
         downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
         transcodingLabel = JetPlayBundle.message("ui.transcoding.label"),
         transcodingTip = JetPlayBundle.message("ui.transcoding.tip"),
-        errorTitle = JetPlayBundle.message("ui.error.title")
+        errorTitle = JetPlayBundle.message("ui.error.title"),
     )
 
     private val component: JComponent = JPanel(BorderLayout()).apply {
@@ -66,8 +66,8 @@ class MediaFileEditor(
                 fileName = source.fileName,
                 fileExtension = source.extension,
                 downloadingReason = JetPlayBundle.message("downloading.reason"),
-                ui = uiStrings
-            )
+                ui = uiStrings,
+            ),
         )
         downloadSession = DownloadSession(source as RemoteFileMediaSource, bridge) {
             if (source.needsTranscoding) {
@@ -93,8 +93,8 @@ class MediaFileEditor(
                     fileName = source.fileName,
                     fileExtension = source.extension,
                     transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
-                    ui = uiStrings
-                )
+                    ui = uiStrings,
+                ),
             )
         }
         transcodeSession = TranscodeSession(source.toLocalFile(), bridge).also { it.start() }
@@ -107,8 +107,8 @@ class MediaFileEditor(
                 fileName = source.fileName,
                 fileExtension = source.extension,
                 mediaUrl = source.resolvePlayableUrl(),
-                ui = uiStrings
-            )
+                ui = uiStrings,
+            ),
         )
     }
 
@@ -119,22 +119,24 @@ class MediaFileEditor(
             .createNotification(
                 JetPlayBundle.message("error.transcoding.notification.title"),
                 JetPlayBundle.message("error.transcoding.notification.content", source.extension.uppercase()),
-                NotificationType.WARNING
+                NotificationType.WARNING,
             )
-            .addAction(NotificationAction.createSimpleExpiring(JetPlayBundle.message("action.report.issue")) {
-                BrowserUtil.browse(JetPlayConstants.ISSUES_URL)
-            })
+            .addAction(
+                NotificationAction.createSimpleExpiring(JetPlayBundle.message("action.report.issue")) {
+                    BrowserUtil.browse(JetPlayConstants.ISSUES_URL)
+                },
+            )
             .notify(project)
     }
 
     override fun getComponent(): JComponent = component
     override fun getPreferredFocusedComponent(): JComponent = component
     override fun getName(): String = JetPlayBundle.message("editor.name")
-    override fun setState(state: FileEditorState) {}
+    override fun setState(state: FileEditorState) = Unit
     override fun isModified(): Boolean = false
     override fun isValid(): Boolean = file.isValid
-    override fun addPropertyChangeListener(listener: PropertyChangeListener) {}
-    override fun removePropertyChangeListener(listener: PropertyChangeListener) {}
+    override fun addPropertyChangeListener(listener: PropertyChangeListener) = Unit
+    override fun removePropertyChangeListener(listener: PropertyChangeListener) = Unit
     override fun getFile(): VirtualFile = file
 
     override fun dispose() {

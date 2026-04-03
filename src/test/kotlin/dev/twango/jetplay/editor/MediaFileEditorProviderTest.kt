@@ -53,7 +53,7 @@ class MediaFileEditorProviderTest : BasePlatformTestCase() {
     fun testPolicy() {
         assertEquals(
             com.intellij.openapi.fileEditor.FileEditorPolicy.HIDE_DEFAULT_EDITOR,
-            provider.policy
+            provider.policy,
         )
     }
 }

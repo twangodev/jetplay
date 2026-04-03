@@ -8,7 +8,7 @@ import kotlin.concurrent.thread
 
 class TranscodeSession(
     private val inputFile: File,
-    private val bridge: PlayerBridge
+    private val bridge: PlayerBridge,
 ) {
 
     companion object {

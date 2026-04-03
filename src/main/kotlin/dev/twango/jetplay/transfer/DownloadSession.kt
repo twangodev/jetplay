@@ -10,11 +10,12 @@ import kotlin.concurrent.thread
 class DownloadSession(
     private val source: RemoteFileMediaSource,
     private val bridge: PlayerBridge,
-    private val onComplete: (File) -> Unit
+    private val onComplete: (File) -> Unit,
 ) {
 
     companion object {
         private val log = Logger.getInstance(DownloadSession::class.java)
+        private const val BYTES_PER_KB = 1024
     }
 
     @Volatile
@@ -54,7 +55,7 @@ class DownloadSession(
 
                 if (!cancelled) {
                     source.setLocalFile(tempFile)
-                    log.info("Downloaded ${source.fileName} (${tempFile.length() / 1024} KB)")
+                    log.info("Downloaded ${source.fileName} (${tempFile.length() / BYTES_PER_KB} KB)")
                     onComplete(tempFile)
                 }
             } catch (_: InterruptedException) {

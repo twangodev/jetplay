@@ -1,0 +1,54 @@
+complexity:
+  LongMethod:
+    threshold: 80
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  TooManyFunctions:
+    thresholdInClasses: 15
+    thresholdInFiles: 15
+  CyclomaticComplexMethod:
+    threshold: 20
+  NestedBlockDepth:
+    threshold: 5
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+
+style:
+  ReturnCount:
+    max: 3
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreEnums: true
+    ignoreNamedArgument: true
+    ignoreLocalVariableDeclaration: true
+    ignoreNumbers:
+      - '-1'
+      - '0'
+      - '1'
+      - '2'
+  MaxLineLength:
+    maxLineLength: 140
+  UnnecessaryAbstractClass:
+    active: false
+  WildcardImport:
+    active: true
+
+formatting:
+  MaximumLineLength:
+    maxLineLength: 140
+  ArgumentListWrapping:
+    maxLineLength: 140
+  TrailingCommaOnCallSite:
+    active: true
+    useTrailingCommaOnCallSite: true
+  TrailingCommaOnDeclarationSite:
+    active: true
+    useTrailingCommaOnDeclarationSite: true
+  ImportOrdering:
+    active: true
+    layout: '*,java.**,javax.**,kotlin.**,^'

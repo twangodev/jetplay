@@ -11,10 +11,28 @@ object MediaTranscoder {
 
     private val log = Logger.getInstance(MediaTranscoder::class.java)
 
+    private const val DEFAULT_VIDEO_BITRATE = 2_000_000
+    private const val DEFAULT_FRAME_RATE = 30.0
+    private const val DEFAULT_GOP_SIZE = 120
+    private const val OPUS_BITRATE = 128_000
+    private const val OPUS_SAMPLE_RATE = 48_000
+    private const val PROGRESS_COMPLETE = 100.0
+    private const val PROGRESS_MAX = 99.9
+    private const val PROGRESS_PRECISION = 10
+    private const val BYTES_PER_KB = 1024
+
     // Formats that JCEF (Chromium) can play natively without transcoding
     private val JCEF_NATIVE_EXTENSIONS = setOf(
-        "webm", "ogv",  // video
-        "ogg", "oga", "opus", "wav", "flac", "mp3" // audio
+        // video
+        "webm",
+        "ogv",
+        // audio
+        "ogg",
+        "oga",
+        "opus",
+        "wav",
+        "flac",
+        "mp3",
     )
 
     fun needsTranscoding(extension: String?): Boolean {
@@ -31,18 +49,23 @@ object MediaTranscoder {
         val hasAudio = grabber.audioChannels > 0
         val totalMicroseconds = grabber.lengthInTime
 
-        val recorder = FFmpegFrameRecorder(outputFile, grabber.imageWidth, grabber.imageHeight, grabber.audioChannels)
+        val recorder = FFmpegFrameRecorder(
+            outputFile,
+            grabber.imageWidth,
+            grabber.imageHeight,
+            grabber.audioChannels,
+        )
         recorder.format = "webm"
         if (hasVideo) {
             recorder.videoCodec = avcodec.AV_CODEC_ID_VP9
-            recorder.videoBitrate = grabber.videoBitrate.takeIf { it > 0 } ?: 2_000_000
-            recorder.frameRate = grabber.frameRate.takeIf { it > 0 } ?: 30.0
-            recorder.gopSize = 120
+            recorder.videoBitrate = grabber.videoBitrate.takeIf { it > 0 } ?: DEFAULT_VIDEO_BITRATE
+            recorder.frameRate = grabber.frameRate.takeIf { it > 0 } ?: DEFAULT_FRAME_RATE
+            recorder.gopSize = DEFAULT_GOP_SIZE
         }
         if (hasAudio) {
             recorder.audioCodec = avcodec.AV_CODEC_ID_OPUS
-            recorder.audioBitrate = 128_000
-            recorder.sampleRate = 48000
+            recorder.audioBitrate = OPUS_BITRATE
+            recorder.sampleRate = OPUS_SAMPLE_RATE
             recorder.audioChannels = grabber.audioChannels
         }
         recorder.start()
@@ -50,12 +73,18 @@ object MediaTranscoder {
         var lastReportedTenth = -1L
         try {
             while (true) {
-                val frame = grabber.grabFrame(hasAudio, true, true, false, false) ?: break
+                val frame = grabber.grabFrame(
+                    hasAudio,
+                    true,
+                    true,
+                    false,
+                    false,
+                ) ?: break
                 recorder.record(frame)
 
                 if (totalMicroseconds > 0) {
-                    val pct = (grabber.timestamp.toDouble() * 100.0 / totalMicroseconds).coerceIn(0.0, 99.9)
-                    val tenth = (pct * 10).toLong()
+                    val pct = (grabber.timestamp.toDouble() * PROGRESS_COMPLETE / totalMicroseconds).coerceIn(0.0, PROGRESS_MAX)
+                    val tenth = (pct * PROGRESS_PRECISION).toLong()
                     if (tenth != lastReportedTenth) {
                         lastReportedTenth = tenth
                         onProgress(pct)
@@ -72,8 +101,8 @@ object MediaTranscoder {
             grabber.release()
         }
 
-        onProgress(100.0)
-        log.info("Transcoded ${inputFile.name} -> ${outputFile.name} (${outputFile.length() / 1024}KB)")
+        onProgress(PROGRESS_COMPLETE)
+        log.info("Transcoded ${inputFile.name} -> ${outputFile.name} (${outputFile.length() / BYTES_PER_KB}KB)")
         return outputFile
     }
 }
