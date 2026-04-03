@@ -11,6 +11,12 @@ declare global {
       errorMessage?: string
       transcodingReason?: string
       downloadingReason?: string
+      ui?: {
+        downloadingLabel?: string
+        transcodingLabel?: string
+        transcodingTip?: string
+        errorTitle?: string
+      }
     }
     jetplayUpdateProgress?: (percent: number) => void
     jetplayUpdateDownloadProgress?: (percent: number) => void

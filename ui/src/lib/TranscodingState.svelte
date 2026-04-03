@@ -2,7 +2,7 @@
   import { Loader2, Info, Lightbulb } from '@lucide/svelte'
   import Branding from './Branding.svelte'
 
-  let { fileName, progress, reason }: { fileName: string; progress: number; reason?: string } = $props()
+  let { fileName, progress, reason, transcodingLabel = 'Converting for playback\u2026', transcodingTip = 'Use .webm, .ogg, .opus, .wav, or .mp3 files to play instantly without conversion.' }: { fileName: string; progress: number; reason?: string; transcodingLabel?: string; transcodingTip?: string } = $props()
 
   const indeterminate = $derived(progress < 0)
 </script>
@@ -14,7 +14,7 @@
   </div>
 
   <!-- Heading -->
-  <div class="text-sm text-muted">Converting for playback…</div>
+  <div class="text-sm text-muted">{transcodingLabel}</div>
 
   <!-- Progress bar -->
   <div class="w-64">
@@ -54,7 +54,7 @@
       <div class="text-muted shrink-0 mt-px">
         <Lightbulb size={14} />
       </div>
-      <span>Use <strong class="text-primary font-medium">.webm</strong>, <strong class="text-primary font-medium">.ogg</strong>, <strong class="text-primary font-medium">.opus</strong>, <strong class="text-primary font-medium">.wav</strong>, or <strong class="text-primary font-medium">.mp3</strong> files to play instantly without conversion.</span>
+      <span>{transcodingTip}</span>
     </div>
   </div>
 

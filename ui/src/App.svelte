@@ -18,6 +18,7 @@
   const isVideo = config.isVideo ?? false
   const transcodingReason = config.transcodingReason ?? ''
   const downloadingReason = config.downloadingReason ?? ''
+  const ui = config.ui ?? {}
 
   window.jetplayUpdateProgress = (percent: number) => {
     progress = percent
@@ -44,11 +45,11 @@
 </script>
 
 {#if state === 'downloading'}
-  <DownloadingState {fileName} progress={downloadProgress} reason={downloadingReason} />
+  <DownloadingState {fileName} progress={downloadProgress} reason={downloadingReason} downloadingLabel={ui.downloadingLabel} />
 {:else if state === 'loading'}
-  <TranscodingState {fileName} {progress} reason={transcodingReason} />
+  <TranscodingState {fileName} {progress} reason={transcodingReason} transcodingLabel={ui.transcodingLabel} transcodingTip={ui.transcodingTip} />
 {:else if state === 'error'}
-  <ErrorState message={errorMessage} />
+  <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />
 {:else if isVideo}
   <VideoPlayer src={mediaUrl} {fileName} />
 {:else}

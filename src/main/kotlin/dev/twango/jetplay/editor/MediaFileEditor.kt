@@ -15,6 +15,7 @@ import dev.twango.jetplay.JetPlayConstants
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerConfig
 import dev.twango.jetplay.browser.PlayerHtmlLoader
+import dev.twango.jetplay.browser.UiStrings
 import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.FfmpegAvailability
@@ -36,6 +37,12 @@ class MediaFileEditor(
     private val htmlLoader = PlayerHtmlLoader(bridge)
     private var downloadSession: DownloadSession? = null
     private var transcodeSession: TranscodeSession? = null
+    private val uiStrings = UiStrings(
+        downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
+        transcodingLabel = JetPlayBundle.message("ui.transcoding.label"),
+        transcodingTip = JetPlayBundle.message("ui.transcoding.tip"),
+        errorTitle = JetPlayBundle.message("ui.error.title")
+    )
 
     private val component: JComponent = JPanel(BorderLayout()).apply {
         add(browser.component, BorderLayout.CENTER)
@@ -58,7 +65,8 @@ class MediaFileEditor(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 fileExtension = source.extension,
-                downloadingReason = JetPlayBundle.message("downloading.reason")
+                downloadingReason = JetPlayBundle.message("downloading.reason"),
+                ui = uiStrings
             )
         )
         downloadSession = DownloadSession(source as RemoteFileMediaSource, bridge) {
@@ -84,7 +92,8 @@ class MediaFileEditor(
                     isVideo = source.isVideo,
                     fileName = source.fileName,
                     fileExtension = source.extension,
-                    transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase())
+                    transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
+                    ui = uiStrings
                 )
             )
         }
@@ -97,7 +106,8 @@ class MediaFileEditor(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 fileExtension = source.extension,
-                mediaUrl = source.resolvePlayableUrl()
+                mediaUrl = source.resolvePlayableUrl(),
+                ui = uiStrings
             )
         )
     }

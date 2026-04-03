@@ -2,7 +2,7 @@
   import { Loader2, Info } from '@lucide/svelte'
   import Branding from './Branding.svelte'
 
-  let { fileName, progress, reason }: { fileName: string; progress: number; reason?: string } = $props()
+  let { fileName, progress, reason, downloadingLabel = 'Downloading\u2026' }: { fileName: string; progress: number; reason?: string; downloadingLabel?: string } = $props()
 
   const indeterminate = $derived(progress < 0)
 </script>
@@ -12,7 +12,7 @@
     <Loader2 size={28} strokeWidth={2} />
   </div>
 
-  <div class="text-sm text-muted">Downloading…</div>
+  <div class="text-sm text-muted">{downloadingLabel}</div>
 
   <div class="w-64">
     <div class="h-1.5 bg-border rounded-full overflow-hidden">

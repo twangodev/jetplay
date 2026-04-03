@@ -8,5 +8,13 @@ data class PlayerConfig(
     val mediaUrl: String? = null,
     val errorMessage: String = "",
     val transcodingReason: String = "",
-    val downloadingReason: String = ""
+    val downloadingReason: String = "",
+    val ui: UiStrings = UiStrings()
+)
+
+data class UiStrings(
+    val downloadingLabel: String = "",
+    val transcodingLabel: String = "",
+    val transcodingTip: String = "",
+    val errorTitle: String = ""
 )
