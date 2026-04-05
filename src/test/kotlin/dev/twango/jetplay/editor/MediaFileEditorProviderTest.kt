@@ -46,6 +46,46 @@ class MediaFileEditorProviderTest : BasePlatformTestCase() {
         assertFalse(provider.accept(project, file))
     }
 
+    fun testAcceptsMkv() {
+        val file = myFixture.addFileToProject("test.mkv", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testAcceptsAvi() {
+        val file = myFixture.addFileToProject("test.avi", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testAcceptsMov() {
+        val file = myFixture.addFileToProject("test.mov", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testAcceptsFlac() {
+        val file = myFixture.addFileToProject("test.flac", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testAcceptsAac() {
+        val file = myFixture.addFileToProject("test.aac", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testAcceptsOpus() {
+        val file = myFixture.addFileToProject("test.opus", "").virtualFile
+        assertTrue(provider.accept(project, file))
+    }
+
+    fun testRejectsPng() {
+        val file = myFixture.addFileToProject("test.png", "").virtualFile
+        assertFalse(provider.accept(project, file))
+    }
+
+    fun testRejectsJson() {
+        val file = myFixture.addFileToProject("test.json", "").virtualFile
+        assertFalse(provider.accept(project, file))
+    }
+
     fun testEditorTypeId() {
         assertEquals("media-player", provider.editorTypeId)
     }
