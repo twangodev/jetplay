@@ -1,21 +1,6 @@
 import { test as base, type Page } from '@playwright/test'
 
-interface JetplayConfig {
-  mediaUrl?: string
-  fileName?: string
-  fileExtension?: string
-  isVideo?: boolean
-  state?: 'downloading' | 'loading' | 'ready' | 'error'
-  errorMessage?: string
-  transcodingReason?: string
-  downloadingReason?: string
-  ui?: {
-    downloadingLabel?: string
-    transcodingLabel?: string
-    transcodingTip?: string
-    errorTitle?: string
-  }
-}
+type JetplayConfig = NonNullable<Window['jetplay']>
 
 export const test = base.extend<{ loadApp: (config: JetplayConfig) => Promise<Page> }>({
   loadApp: async ({ page }, use) => {

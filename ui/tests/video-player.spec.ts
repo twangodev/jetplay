@@ -83,19 +83,17 @@ test('controls auto-hide when playing', async ({ loadApp }) => {
   await page.locator('video').click()
   await expect(page.locator('video')).toHaveJSProperty('paused', false)
 
-  // Wait for auto-hide (3s timer + buffer)
-  await page.waitForTimeout(3500)
-  await expect(controls).toHaveClass(/opacity-0/)
+  // Wait for controls to auto-hide (3s timer in component)
+  await expect(controls).toHaveClass(/opacity-0/, { timeout: 5000 })
 })
 
 test('mouse movement shows controls when hidden', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const controls = page.locator('.bg-gradient-to-t').locator('..')
 
-  // Start playing and wait for hide
+  // Start playing and wait for controls to hide
   await page.locator('video').click()
-  await page.waitForTimeout(3500)
-  await expect(controls).toHaveClass(/opacity-0/)
+  await expect(controls).toHaveClass(/opacity-0/, { timeout: 5000 })
 
   // Move mouse to show controls
   await page.locator('[tabindex="-1"]').hover()

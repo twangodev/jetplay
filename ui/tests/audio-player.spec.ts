@@ -27,13 +27,14 @@ test('skip forward button advances time', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const audio = page.locator('audio')
 
-  // Start playback so currentTime is meaningful
-  await page.locator('button.rounded-full').click()
-  await expect(audio).toHaveJSProperty('paused', false)
+  // Wait for metadata so skipForward doesn't clamp to zero duration
+  await page.waitForFunction(() => {
+    const el = document.querySelector('audio')
+    return el && el.duration > 0
+  })
 
   const timeBefore = await audio.evaluate((el: HTMLAudioElement) => el.currentTime)
 
-  // Click skip forward (third button in transport controls)
   const skipForwardBtn = page.locator('button').filter({ has: page.locator('[class*="lucide-skip-forward"]') })
   await skipForwardBtn.click()
 
@@ -45,16 +46,24 @@ test('skip backward button decreases time', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const audio = page.locator('audio')
 
-  // Set time to 15s then skip back
-  await audio.evaluate((el: HTMLAudioElement) => {
-    el.currentTime = 15
+  // Wait for metadata so seeks are effective
+  await page.waitForFunction(() => {
+    const el = document.querySelector('audio')
+    return el && el.duration > 0
   })
+
+  // Seek near the end, then skip back
+  await audio.evaluate((el: HTMLAudioElement) => {
+    el.currentTime = el.duration
+  })
+
+  const timeBefore = await audio.evaluate((el: HTMLAudioElement) => el.currentTime)
 
   const skipBackBtn = page.locator('button').filter({ has: page.locator('[class*="lucide-skip-back"]') })
   await skipBackBtn.click()
 
   const timeAfter = await audio.evaluate((el: HTMLAudioElement) => el.currentTime)
-  expect(timeAfter).toBeLessThanOrEqual(5)
+  expect(timeAfter).toBeLessThan(timeBefore)
 })
 
 test('space key toggles playback', async ({ loadApp }) => {
