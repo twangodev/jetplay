@@ -68,6 +68,30 @@ class PlayerHtmlLoaderTest {
     }
 
     @Test
+    fun includesTranscodingReasonWhenNotEmpty() {
+        val result = buildScript(PlayerConfig(transcodingReason = "AAC needs conversion"))
+        assertTrue(result.contains("transcodingReason: 'AAC needs conversion'"))
+    }
+
+    @Test
+    fun omitsTranscodingReasonWhenEmpty() {
+        val result = buildScript(PlayerConfig(transcodingReason = ""))
+        assertFalse(result.contains("transcodingReason:"))
+    }
+
+    @Test
+    fun includesDownloadingReasonWhenNotEmpty() {
+        val result = buildScript(PlayerConfig(downloadingReason = "Remote file"))
+        assertTrue(result.contains("downloadingReason: 'Remote file'"))
+    }
+
+    @Test
+    fun omitsDownloadingReasonWhenEmpty() {
+        val result = buildScript(PlayerConfig(downloadingReason = ""))
+        assertFalse(result.contains("downloadingReason:"))
+    }
+
+    @Test
     fun includesUiStrings() {
         val result = buildScript(
             PlayerConfig(
