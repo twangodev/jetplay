@@ -20,6 +20,10 @@ on:
   # Trigger the workflow on any pull request
   pull_request:
 
+# Default to least-privilege permissions for all jobs. Jobs that need more (e.g., test, inspectCode) override this.
+permissions:
+  contents: read
+
 jobs:
 
   # Prepare the environment and build the plugin
