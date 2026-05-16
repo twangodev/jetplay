@@ -35,12 +35,30 @@ object MediaTranscoder {
         "mp3",
     )
 
+    // Headerless raw codec streams need an explicit demuxer + sample rate + channels.
+    private data class RawAudioHint(val format: String, val sampleRate: Int, val channels: Int)
+
+    private val RAW_AUDIO_HINTS = mapOf(
+        "pcmu" to RawAudioHint("mulaw", 8000, 1),
+        "ulaw" to RawAudioHint("mulaw", 8000, 1),
+        "pcma" to RawAudioHint("alaw", 8000, 1),
+        "alaw" to RawAudioHint("alaw", 8000, 1),
+        "g722" to RawAudioHint("g722", 16000, 1),
+        "gsm" to RawAudioHint("gsm", 8000, 1),
+        "sln" to RawAudioHint("s16le", 8000, 1),
+    )
+
     fun needsTranscoding(extension: String?): Boolean = extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
 
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }
 
         val grabber = FFmpegFrameGrabber(inputFile)
+        RAW_AUDIO_HINTS[inputFile.extension.lowercase()]?.let { hint ->
+            grabber.format = hint.format
+            grabber.sampleRate = hint.sampleRate
+            grabber.audioChannels = hint.channels
+        }
         grabber.start()
 
         val hasVideo = grabber.videoCodec > 0
