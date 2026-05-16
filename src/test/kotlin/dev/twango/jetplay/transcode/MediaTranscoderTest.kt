@@ -47,4 +47,17 @@ class MediaTranscoderTest {
     fun emptyExtensionNeedsTranscoding() {
         assertTrue(MediaTranscoder.needsTranscoding(""))
     }
+
+    @Test
+    fun rawAudioHintsAreRegisteredInPluginXml() {
+        val xml = MediaTranscoder::class.java.getResource("/META-INF/plugin.xml")!!.readText()
+        val match = Regex("""extensions="([^"]+)"""").find(xml)
+            ?: error("Could not find extensions attribute in plugin.xml")
+        val registered = match.groupValues[1].split(";").map { it.lowercase() }.toSet()
+        val missing = MediaTranscoder.rawAudioExtensions - registered
+        assertTrue(
+            "RAW_AUDIO_HINTS keys missing from plugin.xml: $missing",
+            missing.isEmpty(),
+        )
+    }
 }

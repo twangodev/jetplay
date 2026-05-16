@@ -49,6 +49,8 @@ object MediaTranscoder {
         "sln" to RawAudioHint("s16le", 8000, 1),
     )
 
+    internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
+
     fun needsTranscoding(extension: String?): Boolean = extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
 
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
