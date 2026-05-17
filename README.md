@@ -1,6 +1,6 @@
 # jetplay
 
-![Build](https://github.com/twangodev/jetplay/workflows/Build/badge.svg)
+[![Build](https://github.com/twangodev/jetplay/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/twangodev/jetplay/actions/workflows/build.yml?query=branch%3Amain+event%3Apush)
 [![Version](https://img.shields.io/jetbrains/plugin/v/31014.svg?logo=jetbrains)](https://plugins.jetbrains.com/plugin/31014)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/31014.svg)](https://plugins.jetbrains.com/plugin/31014)
 
