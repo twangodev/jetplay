@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.3.0](https://github.com/twangodev/jetplay/compare/v0.2.0...v0.3.0) (2026-05-17)
+
+
+### Added
+
+* support raw telephony codecs and additional container formats ([#31](https://github.com/twangodev/jetplay/issues/31)) ([13d3955](https://github.com/twangodev/jetplay/commit/13d395527a23f8951548d1b560759463b9f8440a))
+
 ## [0.2.0](https://github.com/twangodev/jetplay/compare/v0.1.1...v0.2.0) (2026-04-03)
 
 
