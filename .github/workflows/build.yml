@@ -235,11 +235,43 @@ jobs:
         with:
           cache-default-branch-only: true
 
-  # Run plugin structure verification along with IntelliJ Plugin Verifier
-  verify:
-    name: Verify plugin
-    needs: [ build ]
+  # Resolve the list of IDEs that `verifyPlugin recommended()` would target,
+  # so the verify matrix below can fan one runner out per IDE.
+  discover-ides:
+    name: Discover IDEs
     runs-on: ubuntu-latest
+    outputs:
+      ides: ${{ steps.list.outputs.ides }}
+    steps:
+      - name: Fetch Sources
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: true
+
+      - name: List verifier IDEs
+        id: list
+        run: echo "ides=$(.github/scripts/list-verifier-ides.sh)" >> "$GITHUB_OUTPUT"
+
+  # Run plugin structure verification along with IntelliJ Plugin Verifier.
+  # One runner per IDE so a single IDE failure doesn't cascade through the
+  # verifier's shared JAR-filesystem cache (see commit history for context).
+  verify:
+    name: "Verify (${{ matrix.ide }})"
+    needs: [ build, discover-ides ]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ide: ${{ fromJSON(needs.discover-ides.outputs.ides) }}
     steps:
 
       # Free GitHub Actions Environment Disk Space
@@ -278,15 +310,15 @@ jobs:
         with:
           cache-read-only: true
 
-      # Run Verify Plugin task and IntelliJ Plugin Verifier tool
+      # Run Verify Plugin task and IntelliJ Plugin Verifier tool against a single IDE
       - name: Run Plugin Verification tasks
-        run: ./gradlew verifyPlugin
+        run: ./gradlew verifyPlugin -PverifierIde=${{ matrix.ide }}
 
       # Collect Plugin Verifier Result
       - name: Collect Plugin Verifier Result
         if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
-          name: pluginVerifier-result
+          name: pluginVerifier-${{ matrix.ide }}
           path: ${{ github.workspace }}/build/reports/pluginVerifier
 
