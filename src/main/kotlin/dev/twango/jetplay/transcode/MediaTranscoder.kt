@@ -21,6 +21,7 @@ object MediaTranscoder {
     private const val PROGRESS_MAX = 99.9
     private const val PROGRESS_PRECISION = 10
     private const val INDETERMINATE_TENTH = -1L
+    private const val REPORTED_INDETERMINATE_TENTH = -2L
 
     // Formats that JCEF (Chromium) can play natively without transcoding
     private val JCEF_NATIVE_EXTENSIONS = setOf(
@@ -142,8 +143,8 @@ object MediaTranscoder {
         onProgress: (Double) -> Unit,
     ): Long {
         if (totalMicroseconds <= 0) {
-            if (lastReportedTenth != INDETERMINATE_TENTH) onProgress(-1.0)
-            return INDETERMINATE_TENTH
+            if (lastReportedTenth == INDETERMINATE_TENTH) onProgress(-1.0)
+            return REPORTED_INDETERMINATE_TENTH
         }
         val pct = (timestamp.toDouble() * PROGRESS_COMPLETE / totalMicroseconds).coerceIn(0.0, PROGRESS_MAX)
         val tenth = (pct * PROGRESS_PRECISION).toLong()
