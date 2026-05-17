@@ -99,7 +99,14 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            val pinned = providers.gradleProperty("verifierIde").orNull
+            if (pinned.isNullOrBlank()) {
+                recommended()
+            } else {
+                val (type, version) = pinned.split("-", limit = 2)
+                    .also { require(it.size == 2) { "verifierIde must be 'TYPE-VERSION' (e.g. IU-2025.2.6.2), got '$pinned'" } }
+                create(type, version)
+            }
         }
     }
 }
