@@ -61,7 +61,7 @@ test('a waveform buffered before load is picked up', async ({ page }) => {
 
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
-  const playBtn = page.locator('button.rounded-full')
+  const playBtn = page.locator('button[aria-label="Play"], button[aria-label="Pause"]')
 
   // Initially paused — Play icon visible
   await expect(playBtn).toBeVisible()

@@ -56,9 +56,10 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 		offset = next;
 		const totalW = opts.totalWidth();
 		if (totalW <= 0) return;
-		// jetplay: playhead pinned at the LEFT edge (offset 0 = start), so the
-		// waveform fills the box from the left and scrolls left as it plays.
-		const position = Math.max(0, Math.min(1, -next / totalW));
+		// Playhead pinned at the RIGHT edge (sv11): offset containerWidth = start,
+		// containerWidth - totalW = end. The waveform fills in from the right and
+		// scrolls left as it plays.
+		const position = Math.max(0, Math.min(1, (opts.containerWidth() - next) / totalW));
 		const audio = opts.player.audio;
 		if (audio && isFinite(audio.duration)) audio.currentTime = position * audio.duration;
 	}
@@ -110,10 +111,11 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 
 		const startX = e.clientX;
 		const totalW = opts.totalWidth();
+		const containerW = opts.containerWidth();
 		const startOffset = offset;
-		// Left-pinned playhead: offset ranges [-totalW, 0] (0 = start, -totalW = end).
-		const clamp = (v: number) => Math.max(-totalW, Math.min(0, v));
-		const posAt = (o: number) => Math.max(0, Math.min(1, -o / totalW));
+		// Right-pinned playhead: offset ranges [containerW - totalW, containerW].
+		const clamp = (v: number) => Math.max(containerW - totalW, Math.min(containerW, v));
+		const posAt = (o: number) => Math.max(0, Math.min(1, (containerW - o) / totalW));
 
 		let lastPointerX = startX;
 		let lastScratchTime = 0;

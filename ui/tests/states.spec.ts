@@ -12,7 +12,7 @@ test('audio player renders in ready state', async ({ loadApp }) => {
   await expect(page.locator('audio')).toBeAttached()
   await expect(page.getByText('sintel.ogg')).toBeVisible()
   // Play button (the round one with Play icon) should be visible
-  await expect(page.locator('button.rounded-full')).toBeVisible()
+  await expect(page.locator('button[aria-label="Play"], button[aria-label="Pause"]')).toBeVisible()
 })
 
 test('video player renders in ready state', async ({ loadApp }) => {
