@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte'
   import { slide } from 'svelte/transition'
+  import { Slider as SliderPrimitive } from 'bits-ui'
   import { SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
   import {
     AudioGraph,
@@ -167,10 +168,6 @@
     volume = v
     if (v > 0) muted = false
   }
-  function handleVolumeClick(e: MouseEvent) {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setVolume(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
-  }
   function skipBack() {
     const a = player.audio
     if (a) a.currentTime = Math.max(0, a.currentTime - 10)
@@ -290,20 +287,31 @@
       >
         <VolumeIcon class="size-4" />
       </button>
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div
-        class="relative h-1 w-40 cursor-pointer rounded-full bg-foreground/10"
-        role="slider"
-        tabindex="0"
+      <!-- Same bits-ui Slider the scrub bar (AudioPlayerProgress) uses, styled to match. -->
+      <SliderPrimitive.Root
+        type="single"
+        value={muted ? 0 : volume}
+        min={0}
+        max={1}
+        step={0.01}
         aria-label="Volume"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
-        onclick={handleVolumeClick}
+        onValueChange={(v) => setVolume(v)}
+        class="group/vol relative flex h-4 w-40 touch-none items-center select-none"
       >
-        <div class="absolute top-0 left-0 h-full rounded-full bg-primary" style:width="{(muted ? 0 : volume) * 100}%"></div>
-      </div>
+        {#snippet children({ thumbItems })}
+          <span class="bg-muted relative h-[4px] w-full grow overflow-hidden rounded-full">
+            <SliderPrimitive.Range class="bg-primary absolute h-full" />
+          </span>
+          {#each thumbItems as thumb (thumb.index)}
+            <SliderPrimitive.Thumb
+              index={thumb.index}
+              class="relative flex h-0 w-0 items-center justify-center opacity-0 group-hover/vol:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
+            >
+              <div class="bg-foreground absolute size-3 rounded-full"></div>
+            </SliderPrimitive.Thumb>
+          {/each}
+        {/snippet}
+      </SliderPrimitive.Root>
       <span class="w-10 text-right font-mono text-xs text-muted-foreground">{Math.round((muted ? 0 : volume) * 100)}%</span>
     </div>
   </div>

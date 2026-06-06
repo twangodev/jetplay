@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ComponentProps } from "svelte";
 	import Check from "@lucide/svelte/icons/check";
-	import Settings from "@lucide/svelte/icons/settings";
+	import Gauge from "@lucide/svelte/icons/gauge";
 	import * as DropdownMenu from "../dropdown-menu/index.js";
 	import { Button } from "../button/index.js";
 	import { cn } from "$lib/utils.js";
@@ -35,7 +35,7 @@
 				{...props}
 				{...restProps}
 			>
-				<Settings class="size-4" />
+				<Gauge class="size-4" />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
