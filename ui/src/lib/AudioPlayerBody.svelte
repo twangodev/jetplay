@@ -30,7 +30,9 @@
 
   const BARS_PER_SECOND = 8
   const BAR_STEP = 5 // px of scroll travel per waveform bar
-  const WAVEFORM_MAX_SECONDS = 20 * 60 // skip the full-file decode past this
+  // Matches WaveformExtractor.MAX_DURATION_SECONDS (the IDE-side cap) so the
+  // browser fallback and the native path agree on what's "too long".
+  const WAVEFORM_MAX_SECONDS = 30 * 60
 
   // The IDE pushes FFmpeg-decoded bars via the `waveform` prop (the browser
   // can't read file:// bytes itself). `decodedWaveform` is the in-browser
@@ -200,6 +202,7 @@
         role="slider"
         tabindex="0"
         aria-label="Seek playback"
+        data-bars={precomputedWaveform.length}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={scrubberValue}

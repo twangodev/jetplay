@@ -20,8 +20,10 @@ import dev.twango.jetplay.browser.UiStrings
 import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.FfmpegAvailability
+import dev.twango.jetplay.transcode.MediaTranscoder
 import dev.twango.jetplay.transcode.TranscodeSession
 import dev.twango.jetplay.transcode.WaveformExtractor
+import java.util.concurrent.Future
 import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
@@ -37,6 +39,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
     private val htmlLoader = PlayerHtmlLoader(bridge)
     private var downloadSession: DownloadSession? = null
     private var transcodeSession: TranscodeSession? = null
+    private var waveformFuture: Future<*>? = null
     private val uiStrings = UiStrings(
         downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
         transcodingLabel = JetPlayBundle.message("ui.transcoding.label"),
@@ -67,8 +70,11 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
      */
     private fun maybeSendWaveform() {
         if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
+        // Raw telephony codecs need demuxer hints the extractor doesn't apply;
+        // skip them rather than risk a garbage waveform.
+        if (source.extension.lowercase() in MediaTranscoder.rawAudioExtensions) return
         val localFile = source.toLocalFile()
-        ApplicationManager.getApplication().executeOnPooledThread {
+        waveformFuture = ApplicationManager.getApplication().executeOnPooledThread {
             if (bridge.disposed) return@executeOnPooledThread
             val bars = WaveformExtractor.extract(localFile)
             if (bars.isNotEmpty()) bridge.sendWaveform(bars)
@@ -159,6 +165,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
     override fun dispose() {
         downloadSession?.cancel()
         transcodeSession?.cancel()
+        waveformFuture?.cancel(true)
         bridge.dispose()
     }
 }

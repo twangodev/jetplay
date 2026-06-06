@@ -25,6 +25,7 @@ declare global {
     jetplayReady?: (mediaUrl: string) => void
     jetplayError?: (message: string) => void
     jetplayWaveform?: (bars: number[]) => void
+    __jetplayWaveform?: number[]
     jetplayOpenLink?: (url: string) => void
   }
 }

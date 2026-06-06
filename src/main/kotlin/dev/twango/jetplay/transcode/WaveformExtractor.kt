@@ -38,7 +38,11 @@ object WaveformExtractor {
         }
         return try {
             grabber.start()
-            if (grabber.audioChannels <= 0) return emptyList()
+            // No explicit no-audio guard: grabSamples() yields nothing for a
+            // file without an audio stream, so sampleToBars returns empty.
+            // Fast path: skip when the container reports a length over the cap.
+            // (lengthInTime is 0 / AV_NOPTS_VALUE for some inputs, so this is a
+            // best-effort skip; sampleToBars enforces the real ceiling.)
             val durationSeconds = grabber.lengthInTime / 1_000_000.0
             if (durationSeconds > MAX_DURATION_SECONDS) {
                 log.info("Skipping waveform for ${file.name}: ${durationSeconds.roundToInt()}s exceeds cap")
@@ -56,10 +60,13 @@ object WaveformExtractor {
 
     private fun sampleToBars(grabber: FFmpegFrameGrabber, barsPerSecond: Int): List<Double> {
         val samplesPerBar = (grabber.sampleRate / barsPerSecond).coerceAtLeast(1)
-        val bars = ArrayList<Double>()
+        // Hard ceiling on output: bounds the decode even when the container
+        // duration is unknown/misreported, and lets dispose() interrupt us.
+        val maxBars = MAX_DURATION_SECONDS * barsPerSecond
+        val bars = ArrayList<Double>(minOf(maxBars, 4096))
         var sum = 0.0
         var count = 0
-        while (true) {
+        loop@ while (bars.size < maxBars && !Thread.currentThread().isInterrupted) {
             val frame = grabber.grabSamples() ?: break
             val buffer = frame.samples?.firstOrNull() as? ShortBuffer ?: continue
             while (buffer.hasRemaining()) {
@@ -69,10 +76,11 @@ object WaveformExtractor {
                     bars.add(normalize(sum / count))
                     sum = 0.0
                     count = 0
+                    if (bars.size >= maxBars) break@loop
                 }
             }
         }
-        if (count > 0) bars.add(normalize(sum / count))
+        if (count > 0 && bars.size < maxBars) bars.add(normalize(sum / count))
         return bars
     }
 

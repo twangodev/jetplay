@@ -12,7 +12,9 @@
   let downloadProgress = $state(0)
   let mediaUrl = $state(config.mediaUrl ?? '')
   let errorMessage = $state(config.errorMessage ?? 'An unknown error occurred')
-  let waveform = $state(config.waveform ?? [])
+  // Prefer a buffered push (the IDE may have called jetplayWaveform before this
+  // handler existed, in which case it stashed the bars on window).
+  let waveform = $state(window.__jetplayWaveform ?? config.waveform ?? [])
 
   const fileName = config.fileName ?? 'Unknown'
   const fileExtension = config.fileExtension ?? ''

@@ -29,6 +29,36 @@ test('waveform bars pushed from the IDE render the waveform', async ({ loadApp }
   await expect(waveform).toBeVisible()
 })
 
+// IDE-pushed bars must win over the in-browser decode fallback.
+test('pushed bars take precedence over the in-browser fallback', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig) // decodable URL → fallback fills the bars
+  const waveform = page.locator('[aria-label="Seek playback"]')
+  await expect(waveform).toBeVisible()
+  await expect(async () => {
+    expect(Number(await waveform.getAttribute('data-bars'))).toBeGreaterThan(3)
+  }).toPass()
+
+  await page.evaluate(() => window.jetplayWaveform?.([0.1, 0.2, 0.3]))
+  await expect(waveform).toHaveAttribute('data-bars', '3')
+})
+
+// A push that arrived before the page defined the handler is stashed on window
+// and must still be picked up on mount.
+test('a waveform buffered before load is picked up', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as any).jetplay = {
+      state: 'ready',
+      fileName: 'x.mp3',
+      fileExtension: 'mp3',
+      mediaUrl: '/assets/does-not-exist.mp3',
+      isVideo: false,
+    }
+    ;(window as any).__jetplayWaveform = [0.4, 0.5, 0.6, 0.7]
+  })
+  await page.goto('/')
+  await expect(page.locator('[aria-label="Seek playback"]')).toBeVisible()
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const playBtn = page.locator('button.rounded-full')

@@ -37,7 +37,14 @@ class PlayerBridge(private val browser: JBCefBrowser) {
 
     fun showError(message: String) = executeJs("window.jetplayError?.('${escapeJs(message)}')")
 
-    fun sendWaveform(bars: List<Double>) = executeJs("window.jetplayWaveform?.([${bars.joinToString(",")}])")
+    // Stash the bars as well as calling the handler: extraction can finish
+    // before the page defines window.jetplayWaveform (short files), so the app
+    // reads window.__jetplayWaveform on mount to avoid dropping an early push.
+    fun sendWaveform(bars: List<Double>) =
+        executeJs(
+            "window.__jetplayWaveform=[${bars.joinToString(",")}];" +
+                "if(window.jetplayWaveform)window.jetplayWaveform(window.__jetplayWaveform)",
+        )
 
     fun loadHtml(html: String) = browser.loadHTML(html)
 
