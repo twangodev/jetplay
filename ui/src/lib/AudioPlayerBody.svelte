@@ -16,7 +16,12 @@
   import Branding from './Branding.svelte'
   import { useScratchableWaveform } from './use-scratchable-waveform.svelte.js'
 
-  let { src, fileName, extension }: { src: string; fileName: string; extension: string } = $props()
+  let {
+    src,
+    fileName,
+    extension,
+    waveform = [],
+  }: { src: string; fileName: string; extension: string; waveform?: number[] } = $props()
 
   const player = useAudioPlayer<{ name: string }>()
   // Owns the scratch AudioContext used by the scrubbing interaction (no analyser —
@@ -27,7 +32,11 @@
   const BAR_STEP = 5 // px of scroll travel per waveform bar
   const WAVEFORM_MAX_SECONDS = 20 * 60 // skip the full-file decode past this
 
-  let precomputedWaveform = $state<number[]>([])
+  // The IDE pushes FFmpeg-decoded bars via the `waveform` prop (the browser
+  // can't read file:// bytes itself). `decodedWaveform` is the in-browser
+  // fallback used only when no bars were provided (HTTP contexts / tests).
+  let decodedWaveform = $state<number[]>([])
+  const precomputedWaveform = $derived(waveform.length > 0 ? waveform : decodedWaveform)
   let waveformContainerEl = $state<HTMLDivElement | null>(null)
   let containerEl: HTMLDivElement | null = $state(null)
   let containerWidth = $state(300)
@@ -64,20 +73,20 @@
     })
   })
 
-  // Decode the file into waveform bars once duration is known — runtime, capped.
+  // Fallback only: decode in-browser when the IDE didn't supply bars (capped).
   let waveformStarted = false
   $effect(() => {
     const dur = player.duration
-    if (!src || waveformStarted) return
+    if (waveform.length > 0 || !src || waveformStarted) return
     if (dur === undefined || !Number.isFinite(dur)) return
     waveformStarted = true
     if (dur > WAVEFORM_MAX_SECONDS) return
     precomputeWaveform(src, BARS_PER_SECOND)
       .then((bars) => {
-        precomputedWaveform = bars
+        decodedWaveform = bars
       })
       .catch(() => {
-        /* decode failed (codec/CORS) — no waveform is shown */
+        /* decode failed (codec/CORS) — bars come from the IDE instead */
       })
   })
 

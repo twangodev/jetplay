@@ -17,6 +17,18 @@ test('audio element has no crossorigin attribute', async ({ loadApp }) => {
   expect(crossorigin).toBeNull()
 })
 
+// The IDE decodes the waveform with FFmpeg and pushes the bars (the browser
+// can't read file:// bytes). Use a non-decodable URL so the browser fallback
+// can't mask the bridge path.
+test('waveform bars pushed from the IDE render the waveform', async ({ loadApp }) => {
+  const page = await loadApp({ ...audioConfig, mediaUrl: '/assets/does-not-exist.mp3' })
+  const waveform = page.locator('[aria-label="Seek playback"]')
+  await expect(waveform).toHaveCount(0)
+
+  await page.evaluate(() => window.jetplayWaveform?.(Array.from({ length: 40 }, (_, i) => (i % 5) / 5)))
+  await expect(waveform).toBeVisible()
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const playBtn = page.locator('button.rounded-full')

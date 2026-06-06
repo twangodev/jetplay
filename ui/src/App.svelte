@@ -12,6 +12,7 @@
   let downloadProgress = $state(0)
   let mediaUrl = $state(config.mediaUrl ?? '')
   let errorMessage = $state(config.errorMessage ?? 'An unknown error occurred')
+  let waveform = $state(config.waveform ?? [])
 
   const fileName = config.fileName ?? 'Unknown'
   const fileExtension = config.fileExtension ?? ''
@@ -42,6 +43,12 @@
     errorMessage = message
     state = 'error'
   }
+
+  // FFmpeg-decoded amplitude bars pushed from the IDE (the browser can't read
+  // file:// bytes itself).
+  window.jetplayWaveform = (bars: number[]) => {
+    waveform = bars
+  }
 </script>
 
 {#if state === 'downloading'}
@@ -53,5 +60,5 @@
 {:else if isVideo}
   <VideoPlayer src={mediaUrl} {fileName} />
 {:else}
-  <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} />
+  <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} />
 {/if}

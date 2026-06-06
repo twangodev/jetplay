@@ -37,6 +37,8 @@ class PlayerBridge(private val browser: JBCefBrowser) {
 
     fun showError(message: String) = executeJs("window.jetplayError?.('${escapeJs(message)}')")
 
+    fun sendWaveform(bars: List<Double>) = executeJs("window.jetplayWaveform?.([${bars.joinToString(",")}])")
+
     fun loadHtml(html: String) = browser.loadHTML(html)
 
     fun dispose() {

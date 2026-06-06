@@ -2,7 +2,12 @@
   import * as AudioPlayer from '$lib/components/ui/audio-player/index.js'
   import AudioPlayerBody from './AudioPlayerBody.svelte'
 
-  let { src, fileName, extension }: { src: string; fileName: string; extension: string } = $props()
+  let {
+    src,
+    fileName,
+    extension,
+    waveform = [],
+  }: { src: string; fileName: string; extension: string; waveform?: number[] } = $props()
 </script>
 
 <!--
@@ -12,5 +17,5 @@
   track. See AudioPlayerBody.svelte.
 -->
 <AudioPlayer.Root>
-  <AudioPlayerBody {src} {fileName} {extension} />
+  <AudioPlayerBody {src} {fileName} {extension} {waveform} />
 </AudioPlayer.Root>

@@ -4,6 +4,7 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.project.Project
@@ -20,6 +21,7 @@ import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.FfmpegAvailability
 import dev.twango.jetplay.transcode.TranscodeSession
+import dev.twango.jetplay.transcode.WaveformExtractor
 import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
@@ -53,6 +55,23 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
             startTranscoding()
         } else {
             playDirectly()
+        }
+        maybeSendWaveform()
+    }
+
+    /**
+     * The browser can't read the bytes of a file:// media URL, so for local
+     * audio we decode the waveform here with FFmpeg (off the EDT) and push the
+     * bars to the player. Remote sources need their download first (skipped for
+     * now); video has no waveform.
+     */
+    private fun maybeSendWaveform() {
+        if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
+        val localFile = source.toLocalFile()
+        ApplicationManager.getApplication().executeOnPooledThread {
+            if (bridge.disposed) return@executeOnPooledThread
+            val bars = WaveformExtractor.extract(localFile)
+            if (bars.isNotEmpty()) bridge.sendWaveform(bars)
         }
     }
 

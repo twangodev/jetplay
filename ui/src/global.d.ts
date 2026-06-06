@@ -11,6 +11,7 @@ declare global {
       errorMessage?: string
       transcodingReason?: string
       downloadingReason?: string
+      waveform?: number[]
       ui?: {
         downloadingLabel?: string
         transcodingLabel?: string
@@ -23,6 +24,7 @@ declare global {
     jetplayStartTranscoding?: () => void
     jetplayReady?: (mediaUrl: string) => void
     jetplayError?: (message: string) => void
+    jetplayWaveform?: (bars: number[]) => void
     jetplayOpenLink?: (url: string) => void
   }
 }
