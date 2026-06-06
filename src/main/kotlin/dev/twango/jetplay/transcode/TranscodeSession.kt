@@ -6,7 +6,11 @@ import dev.twango.jetplay.browser.PlayerBridge
 import java.io.File
 import kotlin.concurrent.thread
 
-class TranscodeSession(private val inputFile: File, private val bridge: PlayerBridge) {
+class TranscodeSession(
+    private val inputFile: File,
+    private val bridge: PlayerBridge,
+    private val onReady: (File) -> Unit,
+) {
 
     companion object {
         private val log = Logger.getInstance(TranscodeSession::class.java)
@@ -25,7 +29,7 @@ class TranscodeSession(private val inputFile: File, private val bridge: PlayerBr
                     if (!cancelled) bridge.updateProgress(percent)
                 }
                 if (!cancelled) {
-                    bridge.mediaReady(transcoded.toURI().toString())
+                    onReady(transcoded)
                 }
             } catch (_: InterruptedException) {
                 log.info("Transcoding interrupted for ${inputFile.name}")

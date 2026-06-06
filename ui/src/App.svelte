@@ -46,8 +46,8 @@
     state = 'error'
   }
 
-  // FFmpeg-decoded amplitude bars pushed from the IDE (the browser can't read
-  // file:// bytes itself).
+  // FFmpeg-decoded amplitude bars pushed from the IDE (cheaper than decoding the
+  // whole file in the browser).
   window.jetplayWaveform = (bars: number[]) => {
     waveform = bars
   }

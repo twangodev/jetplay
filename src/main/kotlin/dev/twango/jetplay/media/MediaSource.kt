@@ -8,6 +8,5 @@ interface MediaSource {
     val isVideo: Boolean
     val needsTranscoding: Boolean
     val isRemote: Boolean
-    fun resolvePlayableUrl(): String
     fun toLocalFile(): File
 }

@@ -17,6 +17,7 @@ import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerConfig
 import dev.twango.jetplay.browser.PlayerHtmlLoader
 import dev.twango.jetplay.browser.UiStrings
+import dev.twango.jetplay.media.MediaServer
 import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.FfmpegAvailability
@@ -27,6 +28,7 @@ import java.util.concurrent.Future
 import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -40,6 +42,11 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
     private var downloadSession: DownloadSession? = null
     private var transcodeSession: TranscodeSession? = null
     private var waveformFuture: Future<*>? = null
+
+    // Loopback URLs handed out for this editor's media, released on dispose.
+    private val servedUrls = CopyOnWriteArrayList<String>()
+
+    private fun serve(file: java.io.File): String = MediaServer.serve(file).also { servedUrls.add(it) }
     private val uiStrings = UiStrings(
         downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
         transcodingLabel = JetPlayBundle.message("ui.transcoding.label"),
@@ -63,10 +70,10 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
     }
 
     /**
-     * The browser can't read the bytes of a file:// media URL, so for local
-     * audio we decode the waveform here with FFmpeg (off the EDT) and push the
-     * bars to the player. Remote sources need their download first (skipped for
-     * now); video has no waveform.
+     * Decode the waveform for local audio here with FFmpeg (off the EDT) and
+     * push the bars to the player — cheaper than the browser decoding the whole
+     * file, and works for any format. Remote sources need their download first
+     * (skipped for now); video has no waveform.
      */
     private fun maybeSendWaveform() {
         if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
@@ -96,7 +103,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
             if (source.needsTranscoding) {
                 startTranscoding()
             } else {
-                bridge.mediaReady(source.resolvePlayableUrl())
+                bridge.mediaReady(serve(source.toLocalFile()))
             }
         }.also { it.start() }
     }
@@ -120,7 +127,9 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
                 ),
             )
         }
-        transcodeSession = TranscodeSession(source.toLocalFile(), bridge).also { it.start() }
+        transcodeSession = TranscodeSession(source.toLocalFile(), bridge) { transcoded ->
+            bridge.mediaReady(serve(transcoded))
+        }.also { it.start() }
     }
 
     private fun playDirectly() {
@@ -129,7 +138,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 fileExtension = source.extension,
-                mediaUrl = source.resolvePlayableUrl(),
+                mediaUrl = serve(source.toLocalFile()),
                 ui = uiStrings,
             ),
         )
@@ -166,6 +175,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
         downloadSession?.cancel()
         transcodeSession?.cancel()
         waveformFuture?.cancel(true)
+        servedUrls.forEach(MediaServer::release)
         bridge.dispose()
     }
 }

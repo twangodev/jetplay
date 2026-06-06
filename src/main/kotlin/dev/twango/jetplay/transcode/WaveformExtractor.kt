@@ -12,10 +12,10 @@ import kotlin.math.roundToInt
 /**
  * Decodes an audio file into normalized amplitude bars for the UI waveform.
  *
- * The browser can't read the bytes of a `file://` media URL (it's allowed to
- * *play* it, not `fetch()` it), so the waveform is computed here with the
- * bundled FFmpeg and pushed to the page. The output matches the shape the UI's
- * `sampleWaveform` produces: amplitudes in `[0, 1]` at a fixed bars-per-second.
+ * Computed here with the bundled FFmpeg and pushed to the page — cheaper than
+ * the browser fetching and decoding the whole file. The output matches the
+ * shape the UI's `sampleWaveform` produces: amplitudes in `[0, 1]` at a fixed
+ * bars-per-second.
  */
 object WaveformExtractor {
 

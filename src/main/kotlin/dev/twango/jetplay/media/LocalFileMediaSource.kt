@@ -16,7 +16,5 @@ class LocalFileMediaSource(private val file: VirtualFile) : MediaSource {
 
     override val isRemote: Boolean = false
 
-    override fun resolvePlayableUrl(): String = file.toNioPath().toUri().toString()
-
     override fun toLocalFile(): File = file.toNioPath().toFile()
 }
