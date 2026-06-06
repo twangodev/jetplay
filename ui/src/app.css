@@ -3,7 +3,11 @@
 @import "shadcn-svelte/tailwind.css";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
+/* jetplay has no `.dark` class — it tracks the IDE/OS theme via
+   prefers-color-scheme, with the dark palette as the :root default (see below).
+   So `dark:` utilities in sv11 components must be active whenever we're NOT in
+   light mode (i.e. dark preference OR no preference), matching the token setup. */
+@custom-variant dark (@media not (prefers-color-scheme: light));
 
 @theme {
   --color-surface: #2b2b2b;

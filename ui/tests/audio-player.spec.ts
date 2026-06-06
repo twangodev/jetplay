@@ -113,11 +113,11 @@ test('seek bar click seeks to position', async ({ loadApp }) => {
     return el && el.duration > 0
   })
 
-  const seekBar = page.locator('.group.h-5')
+  const seekBar = page.locator('[data-slot="audio-player-progress"]')
   const box = await seekBar.boundingBox()
-  if (!box) throw new Error('SeekBar not visible')
+  if (!box) throw new Error('Progress bar not visible')
 
-  // Click at ~50% of seek bar
+  // Click at ~50% of the progress bar (the waveform above is drag-to-scrub)
   await seekBar.click({ position: { x: box.width * 0.5, y: box.height / 2 } })
 
   const currentTime = await audio.evaluate((el: HTMLAudioElement) => el.currentTime)
