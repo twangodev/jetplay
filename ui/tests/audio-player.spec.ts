@@ -8,6 +8,15 @@ const audioConfig = {
   isVideo: false,
 }
 
+// Regression guard: the IDE serves media as file:// into a null-origin
+// loadHTML page, where `crossorigin` would fail the CORS check and the audio
+// would never load. A re-pull of the sv11 component must not reintroduce it.
+test('audio element has no crossorigin attribute', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  const crossorigin = await page.locator('audio').getAttribute('crossorigin')
+  expect(crossorigin).toBeNull()
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const playBtn = page.locator('button.rounded-full')

@@ -48,6 +48,12 @@
 	});
 </script>
 
+<!--
+	jetplay: do NOT add `crossorigin` here. The IDE serves media as a file:// URL
+	into a loadHTML (null-origin) page, where crossorigin="anonymous" fails the
+	CORS check and the element never loads — nothing plays. (Upstream sv11 sets it
+	for the orb visualizers' Web-Audio reads, which jetplay doesn't use.)
+-->
 <audio
 	bind:this={audioEl}
 	data-slot="audio-player"
@@ -63,6 +69,5 @@
 	onpause={() => (player.paused = true)}
 	onerror={() => (player.error = audioEl?.error ?? null)}
 	class="hidden"
-	crossorigin="anonymous"
 ></audio>
 {@render children?.()}
