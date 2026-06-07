@@ -1,8 +1,8 @@
-# Sample media credits
+# Sample Media Credits
 
 Audio fixtures used to exercise the player (codec inspector, tags, album art).
 
-## Kevin MacLeod tracks
+## Kevin MacLeod Tracks
 
 Royalty-free music by **Kevin MacLeod** (https://incompetech.com), licensed
 under **Creative Commons: By Attribution 4.0** (https://creativecommons.org/licenses/by/4.0/):
@@ -16,6 +16,3 @@ under **Creative Commons: By Attribution 4.0** (https://creativecommons.org/lice
 | `pixel-peeker-polka-faster.mp3` | "Pixel Peeker Polka (faster)" |
 
 > Music by Kevin MacLeod — incompetech.com — Licensed under Creative Commons: By Attribution 4.0.
-
-The embedded ID3 cover art on these files was added locally (album artwork) so
-the player's album-art display can be tested; the audio is unmodified.
