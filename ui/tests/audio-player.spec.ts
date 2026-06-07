@@ -177,6 +177,18 @@ test('media info buffered before load is picked up', async ({ page }) => {
   await expect(summary).toContainText('44.1 kHz')
 })
 
+// Muting must not lose the saved level — unmuting returns to where it was.
+test('muting then unmuting preserves the volume level', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  const muteBtn = page.locator('button[aria-label="Toggle mute"]')
+
+  await expect(page.getByText('100%')).toBeVisible()
+  await muteBtn.click()
+  await expect(page.getByText('0%')).toBeVisible()
+  await muteBtn.click()
+  await expect(page.getByText('100%')).toBeVisible()
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const playBtn = page.locator('button[aria-label="Play"], button[aria-label="Pause"]')

@@ -129,6 +129,73 @@
     else void containerEl.requestFullscreen?.()
   }
 
+  // The seek bar's value tracks currentTime, which is almost never on the step
+  // grid. bits-ui re-snaps an off-grid controlled value back onto the step and
+  // re-fires onValueChange for it — every timeupdate — which re-seeks the video
+  // each frame and stutters. Guard so we only seek on genuine user input: an
+  // active pointer scrub, or a keyboard nudge (caught in the capture phase so
+  // the flag is set before bits-ui's thumb handler fires onValueChange). The
+  // volume slider needs no guard — its value (0..1, and 0 on mute) is always on
+  // the grid, so bits-ui never re-snaps it.
+  let seekInteracting = false
+  let resumeAfterScrub = false
+
+  function onSeekChange(v: number) {
+    if (seekInteracting) seek(v)
+  }
+  function onSeekPointerDown() {
+    seekInteracting = true
+    resumeAfterScrub = !videoEl.paused
+    videoEl.pause()
+    // bits-ui releases the pointer on `document`, not the slider element, so a
+    // release off the thin track would never reach an element onpointerup and
+    // the guard would stay stuck open (re-seeking on replay). Listen on window.
+    window.addEventListener('pointerup', endSeekScrub)
+    window.addEventListener('pointercancel', endSeekScrub)
+  }
+  function endSeekScrub() {
+    seekInteracting = false
+    window.removeEventListener('pointerup', endSeekScrub)
+    window.removeEventListener('pointercancel', endSeekScrub)
+    if (resumeAfterScrub) {
+      resumeAfterScrub = false
+      void videoEl.play()
+    }
+  }
+  // bits-ui's thumb handles arrow/home/end/page keys itself (moving its internal
+  // value), but the seek guard suppresses the resulting onValueChange — so those
+  // keys would desync the thumb without seeking. Intercept them in the capture
+  // phase (before the thumb sees them, via addEventListener capture in onMount —
+  // Svelte's onkeydowncapture didn't attach reliably here) and drive the seek
+  // directly, stopping propagation so bits-ui doesn't also move the thumb.
+  function onSeekKeyCapture(e: KeyboardEvent) {
+    const target = e.target as HTMLElement | null
+    if (!target?.closest('[data-seek-slider]')) return
+    const handle = (fn: () => void) => {
+      e.preventDefault()
+      e.stopPropagation()
+      fn()
+    }
+    switch (e.code) {
+      case 'Space':
+        return handle(togglePlay)
+      case 'ArrowLeft':
+      case 'ArrowDown':
+        return handle(() => skip(-5))
+      case 'ArrowRight':
+      case 'ArrowUp':
+        return handle(() => skip(5))
+      case 'PageDown':
+        return handle(() => skip(-10))
+      case 'PageUp':
+        return handle(() => skip(10))
+      case 'Home':
+        return handle(() => seek(0))
+      case 'End':
+        return handle(() => seek(seekMax))
+    }
+  }
+
   function showControls() {
     controlsVisible = true
     clearTimeout(hideTimer)
@@ -163,7 +230,11 @@
     containerEl?.focus()
     const onFsChange = () => (isFullscreen = !!document.fullscreenElement)
     document.addEventListener('fullscreenchange', onFsChange)
-    return () => document.removeEventListener('fullscreenchange', onFsChange)
+    containerEl.addEventListener('keydown', onSeekKeyCapture, { capture: true })
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      containerEl.removeEventListener('keydown', onSeekKeyCapture, { capture: true })
+    }
   })
 </script>
 
@@ -195,10 +266,6 @@
     onpause={() => {
       paused = true
       controlsVisible = true
-    }}
-    onvolumechange={() => {
-      volume = videoEl.volume
-      muted = videoEl.muted
     }}
   ></video>
 
@@ -298,7 +365,9 @@
         max={seekMax}
         step={0.1}
         aria-label="Seek"
-        onValueChange={(v) => seek(v)}
+        data-seek-slider
+        onValueChange={onSeekChange}
+        onpointerdown={onSeekPointerDown}
         class="group/seek relative flex h-4 w-full touch-none items-center select-none"
       >
         {#snippet children({ thumbItems })}

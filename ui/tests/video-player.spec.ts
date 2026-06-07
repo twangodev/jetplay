@@ -170,6 +170,73 @@ test('mouse movement shows controls when hidden', async ({ loadApp }) => {
   await expect(controls).not.toHaveClass(/opacity-0/)
 })
 
+// Regression: the seek Slider's onValueChange fires on every programmatic value
+// change (each timeupdate), so without an interaction guard the player re-seeks
+// itself every frame and stutters. A freely-playing video must not self-seek.
+test('playing does not self-seek (no stutter feedback loop)', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  const video = page.locator('video')
+  await page.waitForFunction(() => {
+    const el = document.querySelector('video')
+    return el && el.duration > 0
+  })
+  await page.evaluate(() => {
+    const el = document.querySelector('video')!
+    ;(window as unknown as { __seeks: number }).__seeks = 0
+    el.addEventListener('seeking', () => {
+      ;(window as unknown as { __seeks: number }).__seeks++
+    })
+  })
+  await page.locator('button[aria-label="Play"]').click()
+  await page.waitForTimeout(1200)
+
+  const seeks = await page.evaluate(() => (window as unknown as { __seeks: number }).__seeks)
+  expect(seeks).toBeLessThanOrEqual(1)
+  expect(await video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(0.3)
+})
+
+// Regression: bits-ui fires onValueChange in the thumb's bubble phase before a
+// Root-level keydown could open the guard, so arrow nudges on a focused seek
+// thumb were swallowed. A capture-phase handler must open the guard in time.
+test('keyboard arrows on the focused seek thumb actually seek', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  const video = page.locator('video')
+  await page.waitForFunction(() => {
+    const el = document.querySelector('video')
+    return el && el.duration > 0
+  })
+  await page.locator('[data-seek-slider] [role="slider"]').focus()
+  const before = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
+  for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowRight')
+  const after = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
+  expect(after).toBeGreaterThan(before)
+})
+
+// Regression: bits-ui releases the pointer on `document`, so an element-bound
+// onpointerup misses an off-track release — leaving the guard stuck open and the
+// video stuck paused (the stutter loop returns on replay). A window listener
+// must always close the scrub and resume.
+test('releasing a scrub off the track resumes playback', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  const video = page.locator('video')
+  await page.waitForFunction(() => {
+    const el = document.querySelector('video')
+    return el && el.duration > 0
+  })
+  await page.locator('button[aria-label="Play"]').click()
+  await expect(video).toHaveJSProperty('paused', false)
+
+  const box = await page.locator('[data-seek-slider]').boundingBox()
+  if (!box) throw new Error('seek bar not visible')
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.6, box.y - 120) // drag off the thin track
+  await page.mouse.up() // release OFF the slider element
+
+  // Guard closed via the window listener → playback resumes (not stuck paused).
+  await expect(video).toHaveJSProperty('paused', false)
+})
+
 test('time display shows formatted time', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
 
