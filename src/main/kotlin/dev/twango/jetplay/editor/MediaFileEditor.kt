@@ -10,6 +10,7 @@ import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerHtmlLoader
 import dev.twango.jetplay.media.MediaSource
+import dev.twango.jetplay.star.StarReminder
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
@@ -30,6 +31,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
 
     init {
         mediaLoader.load()
+        StarReminder.maybeShow(project)
     }
 
     override fun getComponent(): JComponent = component
