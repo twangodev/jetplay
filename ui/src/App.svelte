@@ -67,7 +67,7 @@
 {:else if state === 'error'}
   <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />
 {:else if isVideo}
-  <VideoPlayer src={mediaUrl} {fileName} />
+  <VideoPlayer src={mediaUrl} {fileName} extension={fileExtension} {mediaInfo} />
 {:else}
   <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} {mediaInfo} />
 {/if}

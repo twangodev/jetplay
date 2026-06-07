@@ -13,6 +13,12 @@ declare global {
     bitrateBps?: number
     durationMs?: number
     sizeBytes?: number
+    width?: number
+    height?: number
+    frameRate?: number
+    videoCodec?: string
+    pixelFormat?: string
+    videoBitrateBps?: number
     tags?: { label: string; value: string }[]
     albumArt?: string
   }

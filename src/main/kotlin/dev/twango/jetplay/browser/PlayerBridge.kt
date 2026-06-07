@@ -86,6 +86,12 @@ class PlayerBridge(private val browser: JBCefBrowser) {
                 info.bitrateBps?.let { add("\"bitrateBps\":$it") }
                 info.durationMs?.let { add("\"durationMs\":$it") }
                 info.sizeBytes?.let { add("\"sizeBytes\":$it") }
+                info.width?.let { add("\"width\":$it") }
+                info.height?.let { add("\"height\":$it") }
+                info.frameRate?.let { add("\"frameRate\":$it") }
+                info.videoCodec?.let { add("\"videoCodec\":${jsonString(it)}") }
+                info.pixelFormat?.let { add("\"pixelFormat\":${jsonString(it)}") }
+                info.videoBitrateBps?.let { add("\"videoBitrateBps\":$it") }
                 if (info.tags.isNotEmpty()) {
                     val arr = info.tags.joinToString(",", "[", "]") { tag ->
                         "{\"label\":${jsonString(tag.label)},\"value\":${jsonString(tag.value)}}"

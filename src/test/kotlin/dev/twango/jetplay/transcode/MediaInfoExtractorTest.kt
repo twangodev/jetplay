@@ -76,6 +76,23 @@ class MediaInfoExtractorTest {
         }
     }
 
+    @Test
+    fun extractsVideoMetadataFromWebm() {
+        Assume.assumeTrue("FFmpeg native libraries required", FfmpegAvailability.available)
+        val webm = File("assets/sintel.webm")
+        Assume.assumeTrue("sintel.webm fixture required", webm.exists())
+
+        val info = MediaInfoExtractor.extract(webm)!!
+        assertEquals(854, info.width)
+        assertEquals(480, info.height)
+        assertEquals("vp9", info.videoCodec)
+        assertNotNull("frame rate should be probed", info.frameRate)
+        assertNotNull("source pixel format should be probed", info.pixelFormat)
+        // The webm also carries an Opus audio stream.
+        assertEquals("opus", info.codec)
+        assertNotNull("audio channels should be probed", info.channels)
+    }
+
     private fun generateSineWav(durationSec: Double, sampleRate: Int, freq: Double): File {
         val sampleCount = (durationSec * sampleRate).toInt()
         val dataBytes = sampleCount * 2 // s16 mono

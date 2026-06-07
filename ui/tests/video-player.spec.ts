@@ -25,8 +25,7 @@ test('play/pause button in overlay controls', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
 
-  // The overlay play button is inside the controls bar (not the round one like audio)
-  const playBtn = page.locator('.bg-gradient-to-t button').first()
+  const playBtn = page.locator('button[aria-label="Play"], button[aria-label="Pause"]')
   await expect(playBtn).toBeVisible()
 
   await playBtn.click()
@@ -34,6 +33,77 @@ test('play/pause button in overlay controls', async ({ loadApp }) => {
 
   await playBtn.click()
   await expect(video).toHaveJSProperty('paused', true)
+})
+
+test('modern transport controls are present', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  for (const label of [
+    'Back 10 seconds',
+    'Previous frame',
+    'Next frame',
+    'Forward 10 seconds',
+    'Playback speed',
+  ]) {
+    await expect(page.locator(`button[aria-label="${label}"]`)).toBeVisible()
+  }
+  await expect(
+    page.locator('button[aria-label="Fullscreen"], button[aria-label="Exit fullscreen"]'),
+  ).toBeVisible()
+})
+
+test('forward 10s button advances time', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  const video = page.locator('video')
+  await page.waitForFunction(() => {
+    const el = document.querySelector('video')
+    return el && el.duration > 0
+  })
+  const before = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
+  await page.locator('button[aria-label="Forward 10 seconds"]').click()
+  const after = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
+  expect(after).toBeGreaterThan(before)
+})
+
+test('speed dropdown changes playback rate', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  await page.locator('button[aria-label="Playback speed"]').click()
+  await page.getByText('1.5x', { exact: true }).click()
+  await expect(page.locator('video')).toHaveJSProperty('playbackRate', 1.5)
+})
+
+test('media-info toggle reveals the video metadata panel', async ({ loadApp }) => {
+  const page = await loadApp(videoConfig)
+  // No inspector until the IDE pushes metadata.
+  await expect(page.locator('button[aria-label="Toggle media details"]')).toHaveCount(0)
+
+  await page.evaluate(() =>
+    window.jetplayMediaInfo?.({
+      container: 'webm',
+      durationMs: 5000,
+      sizeBytes: 583000,
+      width: 854,
+      height: 480,
+      frameRate: 24,
+      videoCodec: 'vp9',
+      pixelFormat: 'yuv420p',
+      codec: 'opus',
+      sampleRateHz: 48000,
+      channels: 2,
+      channelLabel: 'stereo',
+    }),
+  )
+
+  const toggle = page.locator('button[aria-label="Toggle media details"]')
+  await expect(toggle).toBeVisible()
+  await expect(page.locator('[data-slot="media-info-panel"]')).toHaveCount(0)
+
+  await toggle.click()
+  const panel = page.locator('[data-slot="media-info-panel"]')
+  await expect(panel).toBeVisible()
+  await expect(panel).toContainText('Resolution')
+  await expect(panel).toContainText('854×480')
+  await expect(panel).toContainText('vp9')
+  await expect(panel).toContainText('opus') // audio stream too
 })
 
 test('space key toggles playback', async ({ loadApp }) => {

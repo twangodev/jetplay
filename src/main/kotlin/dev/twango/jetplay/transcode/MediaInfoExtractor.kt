@@ -25,6 +25,13 @@ data class MediaInfo(
     val bitrateBps: Long?,
     val durationMs: Long?,
     val sizeBytes: Long?,
+    // Video-stream fields (null for audio-only files).
+    val width: Int? = null,
+    val height: Int? = null,
+    val frameRate: Double? = null,
+    val videoCodec: String? = null,
+    val pixelFormat: String? = null,
+    val videoBitrateBps: Long? = null,
     /** Embedded text tags (title/artist/album/…), in display order. */
     val tags: List<MediaTag> = emptyList(),
     /** Embedded cover art as a `data:` URL, or null when there is none. */
@@ -35,11 +42,12 @@ data class MediaInfo(
 data class MediaTag(val label: String, val value: String)
 
 /**
- * Probes an audio file's container/codec/stream details with the bundled FFmpeg.
+ * Probes a media file's container/codec/stream details with the bundled FFmpeg
+ * (both audio and video streams).
  *
- * Only reads the header — no sample decoding — so it's cheap. Returns null when
- * the file has no readable audio stream, mirroring the graceful-empty contract
- * of [WaveformExtractor]; the UI then just shows the filename as before.
+ * Only reads the header — no frame decoding — so it's cheap. Returns null when
+ * the file has no readable audio or video stream, mirroring the graceful-empty
+ * contract of [WaveformExtractor]; the UI then just shows the filename as before.
  */
 object MediaInfoExtractor {
 
@@ -71,35 +79,57 @@ object MediaInfoExtractor {
         "rating" to "Rating",
     )
 
-    /** Returns the file's audio metadata, or null if it has no readable audio. */
+    /** Returns the file's stream metadata, or null if it has no readable streams. */
     fun extract(file: File): MediaInfo? {
-        // RAW (not SHORT) so getSampleFormat() reports the true source format
-        // instead of the S16 the SHORT path would always claim.
-        val grabber = FFmpegFrameGrabber(file).apply { sampleMode = FrameGrabber.SampleMode.RAW }
+        // RAW modes so the *source* sample/pixel formats are reported; the SHORT/
+        // COLOR defaults would report the decoder's output format instead.
+        val grabber = FFmpegFrameGrabber(file).apply {
+            sampleMode = FrameGrabber.SampleMode.RAW
+            imageMode = FrameGrabber.ImageMode.RAW
+        }
         return try {
             grabber.start()
             val channels = grabber.audioChannels
-            if (channels <= 0) return null // no audio stream
+            val width = grabber.imageWidth
+            val height = grabber.imageHeight
+            val hasAudio = channels > 0
+            val hasVideo = width > 0 && height > 0
+            if (!hasAudio && !hasVideo) return null
 
-            // Use the canonical codec name from the codec id, not getAudioCodecName()
-            // — the latter returns the *decoder* name (e.g. "mp3float" for MP3).
-            val codec = avcodec.avcodec_get_name(grabber.audioCodec)
-                ?.getString()
-                ?.takeIf { it.isNotBlank() && it != "unknown" }
             val durationMs = grabber.lengthInTime.takeIf { it > 0 }?.div(1000)
             val sizeBytes = file.length().takeIf { it > 0 }
-            val bitrate = grabber.audioBitrate.toLong().takeIf { it > 0 } ?: computeBitrate(sizeBytes, durationMs)
+
+            // Audio (canonical codec from the id, not the decoder name).
+            val audioCodec = if (hasAudio) canonicalCodec(grabber.audioCodec) else null
+            val audioBitrate = if (hasAudio) grabber.audioBitrate.toLong().takeIf { it > 0 } else null
+            // The size/duration fallback is the whole-file bitrate, so it only
+            // stands in for the audio bitrate when there is no video stream.
+            val bitrate = audioBitrate ?: if (!hasVideo) computeBitrate(sizeBytes, durationMs) else null
+
+            // Video.
+            val videoCodec = if (hasVideo) canonicalCodec(grabber.videoCodec) else null
+            val frameRate = if (hasVideo) grabber.videoFrameRate.takeIf { it.isFinite() && it > 0 } else null
+            val pixelFormat = if (hasVideo) {
+                avutil.av_get_pix_fmt_name(grabber.pixelFormat)?.getString()?.takeIf { it.isNotBlank() }
+            } else null
+            val videoBitrate = if (hasVideo) grabber.videoBitrate.toLong().takeIf { it > 0 } else null
 
             MediaInfo(
-                codec = codec,
+                codec = audioCodec,
                 container = grabber.format?.substringBefore(",")?.takeIf { it.isNotBlank() },
-                sampleRateHz = grabber.sampleRate.takeIf { it > 0 },
-                channels = channels,
-                channelLabel = channelLabel(channels),
-                bitDepth = bitDepth(codec, grabber.sampleFormat),
+                sampleRateHz = if (hasAudio) grabber.sampleRate.takeIf { it > 0 } else null,
+                channels = if (hasAudio) channels else null,
+                channelLabel = if (hasAudio) channelLabel(channels) else null,
+                bitDepth = if (hasAudio) bitDepth(audioCodec, grabber.sampleFormat) else null,
                 bitrateBps = bitrate,
                 durationMs = durationMs,
                 sizeBytes = sizeBytes,
+                width = width.takeIf { hasVideo },
+                height = height.takeIf { hasVideo },
+                frameRate = frameRate,
+                videoCodec = videoCodec,
+                pixelFormat = pixelFormat,
+                videoBitrateBps = videoBitrate,
                 tags = buildTags(grabber.metadata ?: emptyMap()),
                 albumArt = extractAlbumArt(grabber),
             )
@@ -111,6 +141,11 @@ object MediaInfoExtractor {
             safely("grabber.release") { grabber.release() }
         }
     }
+
+    // Canonical codec name from the codec id (e.g. "mp3", "h264"), not the
+    // decoder name getAudioCodecName()/getVideoCodecName() returns ("mp3float").
+    private fun canonicalCodec(codecId: Int): String? =
+        avcodec.avcodec_get_name(codecId)?.getString()?.takeIf { it.isNotBlank() && it != "unknown" && it != "none" }
 
     private fun computeBitrate(sizeBytes: Long?, durationMs: Long?): Long? {
         if (sizeBytes == null || durationMs == null || durationMs <= 0) return null

@@ -93,12 +93,12 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
 
     /**
      * Probe the file's container/codec/stream details with FFmpeg (off the EDT)
-     * and push them to the player's codec inspector. Same guards as the
-     * waveform: local audio only (remote needs its download first; video has no
-     * audio-player UI yet; raw codecs lack the demuxer hints to probe cleanly).
+     * and push them to the player's codec inspector — audio and video both.
+     * Local only (remote needs its download first); raw audio codecs lack the
+     * demuxer hints to probe cleanly, so they're skipped.
      */
     private fun maybeSendMediaInfo() {
-        if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
+        if (source.isRemote || !FfmpegAvailability.available) return
         if (source.extension.lowercase() in MediaTranscoder.rawAudioExtensions) return
         val localFile = source.toLocalFile()
         mediaInfoFuture = ApplicationManager.getApplication().executeOnPooledThread {

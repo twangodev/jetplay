@@ -18,6 +18,7 @@
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
   import { formatTime } from './formatTime'
+  import { formatBitrate, formatBytes, formatSampleRate } from './mediaInfoFormat'
   import { useScratchableWaveform } from './use-scratchable-waveform.svelte.js'
 
   let {
@@ -65,26 +66,6 @@
   // when the IDE has pushed `mediaInfo` (FFmpeg-probed). Collapsed shows a
   // glanceable summary line; expanded shows the full label/value grid.
   let infoExpanded = $state(false)
-
-  function formatSampleRate(hz: number): string {
-    // Keep enough precision for the conventional rates (44.1, 22.05, 11.025)
-    // while trimming trailing zeros (48000 → "48", 44100 → "44.1").
-    const k = Number((hz / 1000).toFixed(3))
-    return `${k} kHz`
-  }
-  function formatBitrate(bps: number): string {
-    // kbps is the conventional unit for audio at every magnitude (lossless can
-    // run several thousand kbps), so we don't switch to Mbps.
-    return `${Math.round(bps / 1000)} kbps`
-  }
-  function formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`
-    const kb = bytes / 1024
-    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`
-    const mb = kb / 1024
-    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`
-    return `${(mb / 1024).toFixed(1)} GB`
-  }
 
   type InfoRow = { label: string; value: string }
   const infoRows = $derived.by<InfoRow[]>(() => {
