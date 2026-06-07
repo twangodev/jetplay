@@ -15,6 +15,7 @@ object MediaTranscoder {
     private const val DEFAULT_VIDEO_BITRATE = 2_000_000
     private const val DEFAULT_FRAME_RATE = 30.0
     private const val DEFAULT_GOP_SIZE = 120
+    private val VP9_THREADS = Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
     private const val OPUS_BITRATE = 128_000
     private const val OPUS_SAMPLE_RATE = 48_000
     private const val PROGRESS_COMPLETE = 100.0
@@ -111,6 +112,13 @@ object MediaTranscoder {
             recorder.videoBitrate = grabber.videoBitrate.takeIf { it > 0 } ?: DEFAULT_VIDEO_BITRATE
             recorder.frameRate = grabber.frameRate.takeIf { it > 0 } ?: DEFAULT_FRAME_RATE
             recorder.gopSize = DEFAULT_GOP_SIZE
+            // libvpx VP9 defaults to a very slow deadline (multiples of real time),
+            // which makes converting a normal HD clip look like it's hung. We only
+            // need a watchable preview, so encode in real time across all cores.
+            recorder.setVideoOption("deadline", "realtime")
+            recorder.setVideoOption("cpu-used", "8")
+            recorder.setVideoOption("row-mt", "1")
+            recorder.setVideoOption("threads", VP9_THREADS.toString())
         }
         if (hasAudio) {
             recorder.audioCodec = avcodec.AV_CODEC_ID_OPUS

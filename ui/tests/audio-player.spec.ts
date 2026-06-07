@@ -8,9 +8,190 @@ const audioConfig = {
   isVideo: false,
 }
 
+// Regression guard: the IDE serves media as file:// into a null-origin
+// loadHTML page, where `crossorigin` would fail the CORS check and the audio
+// would never load. A re-pull of the sv11 component must not reintroduce it.
+test('audio element has no crossorigin attribute', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  const crossorigin = await page.locator('audio').getAttribute('crossorigin')
+  expect(crossorigin).toBeNull()
+})
+
+// The IDE decodes the waveform with FFmpeg and pushes the bars (the browser
+// can't read file:// bytes). Use a non-decodable URL so the browser fallback
+// can't mask the bridge path.
+test('waveform bars pushed from the IDE render the waveform', async ({ loadApp }) => {
+  const page = await loadApp({ ...audioConfig, mediaUrl: '/assets/does-not-exist.mp3' })
+  const waveform = page.locator('[aria-label="Seek playback"]')
+  await expect(waveform).toHaveCount(0)
+
+  await page.evaluate(() => window.jetplayWaveform?.(Array.from({ length: 40 }, (_, i) => (i % 5) / 5)))
+  await expect(waveform).toBeVisible()
+})
+
+// IDE-pushed bars must win over the in-browser decode fallback.
+test('pushed bars take precedence over the in-browser fallback', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig) // decodable URL → fallback fills the bars
+  const waveform = page.locator('[aria-label="Seek playback"]')
+  await expect(waveform).toBeVisible()
+  await expect(async () => {
+    expect(Number(await waveform.getAttribute('data-bars'))).toBeGreaterThan(3)
+  }).toPass()
+
+  await page.evaluate(() => window.jetplayWaveform?.([0.1, 0.2, 0.3]))
+  await expect(waveform).toHaveAttribute('data-bars', '3')
+})
+
+// A push that arrived before the page defined the handler is stashed on window
+// and must still be picked up on mount.
+test('a waveform buffered before load is picked up', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as any).jetplay = {
+      state: 'ready',
+      fileName: 'x.mp3',
+      fileExtension: 'mp3',
+      mediaUrl: '/assets/does-not-exist.mp3',
+      isVideo: false,
+    }
+    ;(window as any).__jetplayWaveform = [0.4, 0.5, 0.6, 0.7]
+  })
+  await page.goto('/')
+  await expect(page.locator('[aria-label="Seek playback"]')).toBeVisible()
+})
+
+// The IDE probes the file with FFmpeg and pushes technical metadata; the header
+// stays a plain filename until then, and expands into a full grid on click.
+test('media-info push renders the summary and expands into a grid', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  // No info yet → no toggle, no summary, no grid.
+  await expect(page.locator('[aria-label="Toggle media details"]')).toHaveCount(0)
+  await expect(page.locator('[data-slot="media-info-summary"]')).toHaveCount(0)
+
+  await page.evaluate(() =>
+    window.jetplayMediaInfo?.({
+      codec: 'pcm_s16le',
+      container: 'wav',
+      sampleRateHz: 48000,
+      channels: 2,
+      channelLabel: 'stereo',
+      bitDepth: '16-bit',
+      bitrateBps: 1536000,
+      durationMs: 42318,
+      sizeBytes: 1258291,
+    }),
+  )
+
+  const summary = page.locator('[data-slot="media-info-summary"]')
+  await expect(summary).toBeVisible()
+  await expect(summary).toContainText('48 kHz')
+  await expect(summary).toContainText('stereo')
+  // Container is not duplicated in the summary — the badge already shows it.
+  await expect(summary).not.toContainText('WAV')
+
+  // Grid is collapsed until the header is clicked.
+  await expect(page.locator('[data-slot="media-info-grid"]')).toHaveCount(0)
+  await page.locator('[aria-label="Toggle media details"]').click()
+
+  const grid = page.locator('[data-slot="media-info-grid"]')
+  await expect(grid).toBeVisible()
+  await expect(grid).toContainText('Codec')
+  await expect(grid).toContainText('pcm_s16le')
+  // The exact container lives in the grid instead of the summary.
+  await expect(grid).toContainText('Container')
+  await expect(grid).toContainText('WAV')
+  await expect(grid).toContainText('Bitrate')
+  await expect(grid).toContainText('1536 kbps')
+})
+
+// Embedded tags render in their own group in the expanded panel, and embedded
+// cover art becomes a blurred ambient background (not a thumbnail).
+test('embedded tags render in the expanded panel and album art blurs the background', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  await expect(page.locator('[data-slot="album-art"]')).toHaveCount(0)
+
+  const art =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+  await page.evaluate((cover) => {
+    window.jetplayMediaInfo?.({
+      codec: 'flac',
+      container: 'flac',
+      sampleRateHz: 44100,
+      channels: 2,
+      channelLabel: 'stereo',
+      tags: [
+        { label: 'Title', value: 'Aerodynamic' },
+        { label: 'Artist', value: 'Daft Punk' },
+        { label: 'Album', value: 'Discovery' },
+      ],
+      albumArt: cover,
+    })
+  }, art)
+
+  // Cover art appears as the ambient blurred background layer.
+  await expect(page.locator('[data-slot="album-art"]')).toBeVisible()
+
+  // Tags live in their own group, revealed on expand.
+  await expect(page.locator('[data-slot="media-info-tags"]')).toHaveCount(0)
+  await page.locator('[aria-label="Toggle media details"]').click()
+  const tagsPanel = page.locator('[data-slot="media-info-tags"]')
+  await expect(tagsPanel).toBeVisible()
+  await expect(tagsPanel).toContainText('Title')
+  await expect(tagsPanel).toContainText('Aerodynamic')
+  await expect(tagsPanel).toContainText('Daft Punk')
+})
+
+// Regression: the player container's Space shortcut must not swallow the
+// toggle button's native activation. Space on the focused toggle expands the
+// inspector and must NOT start playback.
+test('space activates the focused media-details toggle, not playback', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  await page.evaluate(() =>
+    window.jetplayMediaInfo?.({ codec: 'pcm_s16le', container: 'wav', sampleRateHz: 48000, channels: 2, channelLabel: 'stereo' }),
+  )
+  const toggle = page.locator('[aria-label="Toggle media details"]')
+  await toggle.focus()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+  await page.keyboard.press('Space')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('[data-slot="media-info-grid"]')).toBeVisible()
+  await expect(page.locator('audio')).toHaveJSProperty('paused', true)
+})
+
+// A push that arrived before the page defined the handler is stashed on window
+// and must still be picked up on mount (same guard as the waveform).
+test('media info buffered before load is picked up', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as any).jetplay = {
+      state: 'ready',
+      fileName: 'x.wav',
+      fileExtension: 'wav',
+      mediaUrl: '/assets/does-not-exist.mp3',
+      isVideo: false,
+    }
+    ;(window as any).__jetplayMediaInfo = { container: 'wav', sampleRateHz: 44100, channels: 1, channelLabel: 'mono' }
+  })
+  await page.goto('/')
+  const summary = page.locator('[data-slot="media-info-summary"]')
+  await expect(summary).toBeVisible()
+  await expect(summary).toContainText('44.1 kHz')
+})
+
+// Muting must not lose the saved level — unmuting returns to where it was.
+test('muting then unmuting preserves the volume level', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  const muteBtn = page.locator('button[aria-label="Toggle mute"]')
+
+  await expect(page.getByText('100%')).toBeVisible()
+  await muteBtn.click()
+  await expect(page.getByText('0%')).toBeVisible()
+  await muteBtn.click()
+  await expect(page.getByText('100%')).toBeVisible()
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
-  const playBtn = page.locator('button.rounded-full')
+  const playBtn = page.locator('button[aria-label="Play"], button[aria-label="Pause"]')
 
   // Initially paused — Play icon visible
   await expect(playBtn).toBeVisible()
@@ -113,11 +294,11 @@ test('seek bar click seeks to position', async ({ loadApp }) => {
     return el && el.duration > 0
   })
 
-  const seekBar = page.locator('.group.h-5')
+  const seekBar = page.locator('[data-slot="audio-player-progress"]')
   const box = await seekBar.boundingBox()
-  if (!box) throw new Error('SeekBar not visible')
+  if (!box) throw new Error('Progress bar not visible')
 
-  // Click at ~50% of seek bar
+  // Click at ~50% of the progress bar (the waveform above is drag-to-scrub)
   await seekBar.click({ position: { x: box.width * 0.5, y: box.height / 2 } })
 
   const currentTime = await audio.evaluate((el: HTMLAudioElement) => el.currentTime)
