@@ -89,12 +89,20 @@
 					fadeProgress += 0.03;
 					if (fadeProgress < 1) {
 						data = startData.map((value) => value * (1 - fadeProgress));
-						requestAnimationFrame(fadeToIdle);
+						processingAnimationRef = requestAnimationFrame(fadeToIdle);
 					} else {
 						data = [];
+						processingAnimationRef = null;
 					}
 				};
 				fadeToIdle();
+
+				return () => {
+					if (processingAnimationRef !== null) {
+						cancelAnimationFrame(processingAnimationRef);
+						processingAnimationRef = null;
+					}
+				};
 			}
 			return;
 		}

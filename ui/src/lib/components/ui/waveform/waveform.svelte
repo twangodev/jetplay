@@ -174,10 +174,11 @@
 
 		const rect = canvasEl.getBoundingClientRect();
 		const x = e.clientX - rect.left;
+		const barCount = Math.floor(rect.width / (barWidth + barGap));
+		if (barCount <= 0) return;
+
 		const barIndex = Math.floor(x / (barWidth + barGap));
-		const dataIndex = Math.floor(
-			(barIndex * data.length) / Math.floor(rect.width / (barWidth + barGap))
-		);
+		const dataIndex = Math.floor((barIndex * data.length) / barCount);
 
 		if (dataIndex >= 0 && dataIndex < data.length) {
 			onBarClick(dataIndex, data[dataIndex]);

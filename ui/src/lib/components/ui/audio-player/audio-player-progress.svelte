@@ -17,6 +17,7 @@
 		onValueChange: externalOnValueChange,
 		onpointerdown: externalPointerDown,
 		onpointerup: externalPointerUp,
+		onpointercancel: externalPointerCancel,
 		onkeydown: externalKeyDown,
 		...restProps
 	}: Props = $props();
@@ -58,6 +59,11 @@
 		userInteracting = false;
 		if (wasPlaying) void player.play();
 		externalPointerUp?.(e);
+	}}
+	onpointercancel={(e) => {
+		userInteracting = false;
+		if (wasPlaying) void player.play();
+		externalPointerCancel?.(e);
 	}}
 	onkeydown={(e) => {
 		if (e.key === " ") {

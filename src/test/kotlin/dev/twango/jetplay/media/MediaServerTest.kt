@@ -86,9 +86,9 @@ class MediaServerTest {
     fun releasedTokenStopsBeingServed() {
         withTempFile("bye".toByteArray(), ".mp3") { file ->
             val url = MediaServer.serve(file)
-            assertEquals(200, open(url).also { it.disconnect() }.responseCode)
+            assertEquals(200, open(url).run { responseCode.also { disconnect() } })
             MediaServer.release(url)
-            assertEquals(404, open(url).also { it.disconnect() }.responseCode)
+            assertEquals(404, open(url).run { responseCode.also { disconnect() } })
         }
     }
 

@@ -22,6 +22,10 @@ function getScratchBuffer(url: string, ctx: AudioContext): Promise<AudioBuffer |
 	if (!cached) {
 		cached = fetchScratchBuffer(url, ctx);
 		scratchBufferCache.set(url, cached);
+		// Don't permanently cache failures: evict so a later attempt can retry.
+		void cached.then((buf) => {
+			if (!buf) scratchBufferCache.delete(url);
+		});
 	}
 	return cached;
 }
@@ -41,6 +45,8 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 
 	let scratchBuffer: AudioBuffer | null = null;
 	let scratchSource: AudioBufferSourceNode | null = null;
+	let scratchFilter: BiquadFilterNode | null = null;
+	let momentumRaf: number | null = null;
 
 	function warmScratchBuffer(): void {
 		if (scratchBuffer) return;
@@ -85,24 +91,38 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 			filter.connect(ctx.destination);
 			source.start(0, startTime, 0.06);
 			scratchSource = source;
+			scratchFilter = filter;
 		} catch (error) {
 			console.error("scratch playback failed:", error);
 		}
 	}
 
 	function stopScratch(): void {
-		if (!scratchSource) return;
+		if (!scratchSource && !scratchFilter) return;
 		try {
-			scratchSource.stop();
+			scratchSource?.stop();
 		} catch {
 			// already stopped
 		}
+		scratchSource?.disconnect();
+		scratchFilter?.disconnect();
 		scratchSource = null;
+		scratchFilter = null;
+	}
+
+	function stopMomentum(): void {
+		if (momentumRaf !== null) {
+			cancelAnimationFrame(momentumRaf);
+			momentumRaf = null;
+		}
+		isMomentumActive = false;
 	}
 
 	function handlePointerDown(e: PointerEvent): void {
 		if (e.pointerType === "mouse" && e.button !== 0) return;
 		e.preventDefault();
+		// Cancel any in-flight momentum so it doesn't race with the new drag.
+		stopMomentum();
 		warmScratchBuffer();
 
 		isScrubbing = true;
@@ -167,6 +187,7 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 			const step = () => {
 				if (Math.abs(v) <= 0.5) {
 					stopScratch();
+					momentumRaf = null;
 					isMomentumActive = false;
 					// Delay the resume so the final scratch slice releases
 					// before the media element starts — prevents a crackle.
@@ -186,9 +207,9 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 					if (speed > 0.1) playScratch(posAt(clamped), speed);
 					lastFrame = now;
 				}
-				requestAnimationFrame(step);
+				momentumRaf = requestAnimationFrame(step);
 			};
-			requestAnimationFrame(step);
+			momentumRaf = requestAnimationFrame(step);
 		};
 
 		document.addEventListener("pointermove", onMove);
@@ -213,6 +234,7 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 
 	function reset(): void {
 		scratchBuffer = null;
+		stopMomentum();
 		stopScratch();
 	}
 

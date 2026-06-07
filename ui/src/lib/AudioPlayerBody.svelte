@@ -129,21 +129,24 @@
   $effect(() => {
     if (!player.audio || !src) return
     untrack(() => {
-      void player.setActiveItem({ id: fileName, src, data: { name: fileName } })
+      void player.setActiveItem({ id: src, src, data: { name: fileName } })
     })
   })
 
   // Fallback only: decode in-browser when the IDE didn't supply bars (capped).
-  let waveformStarted = false
+  // Keyed to `src` so a new track re-decodes, and the in-flight `src` is captured
+  // so a late-resolving decode for an old source can't clobber newer bars.
+  let decodedSrc: string | null = null
   $effect(() => {
     const dur = player.duration
-    if (waveform.length > 0 || !src || waveformStarted) return
+    if (waveform.length > 0 || !src || decodedSrc === src) return
     if (dur === undefined || !Number.isFinite(dur)) return
-    waveformStarted = true
+    decodedSrc = src
     if (dur > WAVEFORM_MAX_SECONDS) return
+    const decodingSrc = src
     precomputeWaveform(src, BARS_PER_SECOND)
       .then((bars) => {
-        decodedWaveform = bars
+        if (decodingSrc === src) decodedWaveform = bars
       })
       .catch(() => {
         /* decode failed — bars come from the IDE instead */

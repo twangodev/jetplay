@@ -13,7 +13,7 @@
 		children: childrenProp,
 		...restProps
 	}: WithoutChildrenOrChild<DropdownMenuPrimitive.CheckboxItemProps> & {
-		children?: Snippet;
+		children?: Snippet<[{ checked: boolean; indeterminate: boolean }]>;
 	} = $props();
 </script>
 
@@ -39,6 +39,6 @@
 				<CheckIcon  />
 			{/if}
 		</span>
-		{@render childrenProp?.()}
+		{@render childrenProp?.({ checked, indeterminate })}
 	{/snippet}
 </DropdownMenuPrimitive.CheckboxItem>
