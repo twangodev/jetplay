@@ -9,6 +9,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import dev.twango.jetplay.media.LocalFileMediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
+import dev.twango.jetplay.star.StarReminder
 
 class MediaFileEditorProvider :
     FileEditorProvider,
@@ -22,6 +23,7 @@ class MediaFileEditorProvider :
         } else {
             RemoteFileMediaSource(file)
         }
+        StarReminder.maybeShow(project)
         return MediaFileEditor(project, file, source)
     }
 
