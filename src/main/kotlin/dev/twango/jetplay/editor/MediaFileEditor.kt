@@ -134,7 +134,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
             return
         }
         if (source.isRemote) {
-            bridge.executeJs("window.jetplayStartTranscoding?.()")
+            bridge.executeJs("window.__jetplayState='loading';window.__jetplayProgress=0;window.jetplayStartTranscoding?.()")
         } else {
             htmlLoader.load(
                 PlayerConfig(

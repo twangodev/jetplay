@@ -30,13 +30,22 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         }
     }
 
-    fun updateProgress(percent: Double) = executeJs("window.jetplayUpdateProgress?.($percent)")
+    // Each of these stashes its value on window before calling the handler: the
+    // transcode/download can finish before the page has mounted and defined the
+    // handler (a fast transcode easily beats the page load), in which case the
+    // `?.` call is a silent no-op. The app reads the stash on mount so the state
+    // transition (esp. mediaReady → 'ready') is never dropped, leaving it stuck.
+    fun updateProgress(percent: Double) =
+        executeJs("window.__jetplayProgress=$percent;window.jetplayUpdateProgress?.($percent)")
 
-    fun updateDownloadProgress(percent: Double) = executeJs("window.jetplayUpdateDownloadProgress?.($percent)")
+    fun updateDownloadProgress(percent: Double) =
+        executeJs("window.__jetplayDownloadProgress=$percent;window.jetplayUpdateDownloadProgress?.($percent)")
 
-    fun mediaReady(url: String) = executeJs("window.jetplayReady?.('${escapeJs(url)}')")
+    fun mediaReady(url: String) =
+        executeJs("window.__jetplayReadyUrl='${escapeJs(url)}';window.jetplayReady?.('${escapeJs(url)}')")
 
-    fun showError(message: String) = executeJs("window.jetplayError?.('${escapeJs(message)}')")
+    fun showError(message: String) =
+        executeJs("window.__jetplayError='${escapeJs(message)}';window.jetplayError?.('${escapeJs(message)}')")
 
     // Stash the bars as well as calling the handler: extraction can finish
     // before the page defines window.jetplayWaveform (short files), so the app
