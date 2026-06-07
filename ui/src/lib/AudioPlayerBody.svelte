@@ -40,18 +40,16 @@
   const graph = new AudioGraph()
 
   const BARS_PER_SECOND = 8
-  const BAR_STEP = 5 // px of scroll travel per waveform bar
+  const BAR_STEP_PX = 5
   // Matches WaveformExtractor.MAX_DURATION_SECONDS (the IDE-side cap).
   const WAVEFORM_MAX_SECONDS = 30 * 60
 
-  // The IDE pushes FFmpeg-decoded bars via `waveform`; `decodedWaveform` is the
-  // in-browser fallback used only when no bars were provided (HTTP / tests).
-  let decodedWaveform = $state<number[]>([])
-  const precomputedWaveform = $derived(waveform.length > 0 ? waveform : decodedWaveform)
+  let inBrowserFallbackWaveform = $state<number[]>([])
+  const precomputedWaveform = $derived(waveform.length > 0 ? waveform : inBrowserFallbackWaveform)
   let waveformContainerEl = $state<HTMLDivElement | null>(null)
   let containerEl: HTMLDivElement | null = $state(null)
   let containerWidth = $state(300)
-  const totalWidth = $derived(precomputedWaveform.length * BAR_STEP)
+  const totalWidth = $derived(precomputedWaveform.length * BAR_STEP_PX)
   // Short waveforms stretch to fill the box; longer ones scroll past the playhead.
   const displayWidth = $derived(Math.max(totalWidth, containerWidth))
   const hasWaveform = $derived(precomputedWaveform.length > 0)
@@ -62,9 +60,7 @@
     muted || volume === 0 ? VolumeX : volume <= 0.33 ? Volume : volume <= 0.66 ? Volume1 : Volume2,
   )
 
-  // --- Codec inspector: the metadata header expands into a technical readout ---
-  // when the IDE has pushed `mediaInfo` (FFmpeg-probed). Collapsed shows a
-  // glanceable summary line; expanded shows the full label/value grid.
+  // Collapsed shows the summary line; expanded shows the full label/value grid.
   let infoExpanded = $state(false)
 
   type InfoRow = { label: string; value: string }
@@ -87,8 +83,7 @@
   const summaryLine = $derived.by(() => {
     const m = mediaInfo
     if (!m) return ''
-    // Container is intentionally omitted — the extension badge already conveys
-    // the format. The exact demux container still shows in the expanded grid.
+    // Container is omitted here: the extension badge conveys it, and the expanded grid still lists it.
     const parts: string[] = []
     if (m.sampleRateHz) parts.push(formatSampleRate(m.sampleRateHz))
     if (m.bitDepth) parts.push(m.bitDepth)
@@ -101,12 +96,10 @@
   const tags = $derived(mediaInfo?.tags ?? [])
   const albumArt = $derived(mediaInfo?.albumArt)
 
-  // Only treat info as present when there's something to expand into, so an
-  // empty/degenerate push never renders a chevron with nothing behind it.
+  // Gate the chevron on real content, so an empty push never expands into nothing.
   const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
 
-  // sv11 colors the bars a muted gray rather than full --foreground. jetplay
-  // tracks the IDE theme via prefers-color-scheme (dark unless prefers-light).
+  // Track the IDE theme via prefers-color-scheme (dark unless prefers-light).
   let isDark = $state(true)
   const barColor = $derived(isDark ? '#a1a1aa' : '#71717a')
 
@@ -133,19 +126,19 @@
     })
   })
 
-  // Fallback only: decode in-browser when the IDE didn't supply bars (capped).
   // A late-resolving decode for an old src must not clobber newer bars.
-  let decodedSrc: string | null = null
+  let fallbackDecodedSrc: string | null = null
   $effect(() => {
     const dur = player.duration
-    if (waveform.length > 0 || !src || decodedSrc === src) return
+    const ideSuppliedBars = waveform.length > 0
+    if (ideSuppliedBars || !src || fallbackDecodedSrc === src) return
     if (dur === undefined || !Number.isFinite(dur)) return
-    decodedSrc = src
+    fallbackDecodedSrc = src
     if (dur > WAVEFORM_MAX_SECONDS) return
     const decodingSrc = src
     precomputeWaveform(src, BARS_PER_SECOND)
       .then((bars) => {
-        if (decodingSrc === src) decodedWaveform = bars
+        if (decodingSrc === src) inBrowserFallbackWaveform = bars
       })
       .catch(() => {
         /* decode failed — bars come from the IDE instead */
@@ -172,8 +165,7 @@
     untrack(() => (scrub.offset = containerWidth))
   })
 
-  // Drive the scroll offset from playback position, unless the user is scrubbing.
-  // Right-pinned (sv11): offset = containerWidth at start, scrolls left as it plays.
+  // Right-pinned: offset starts at containerWidth and scrolls left as playback advances (idle only).
   $effect(() => {
     let id: number
     const update = () => {
@@ -231,11 +223,9 @@
     if (a && isFinite(a.duration)) a.currentTime = Math.min(a.duration, a.currentTime + 10)
   }
   function handleKeydown(e: KeyboardEvent) {
-    // Only the player container itself drives these shortcuts. When an inner
-    // control (the media-details toggle, mute, the volume slider) is focused,
-    // let it receive the key natively — e.g. Space must activate the toggle,
-    // not get swallowed here into a play/pause.
-    if (e.target !== containerEl) return
+    // Let focused inner controls handle keys natively (e.g. Space activates the toggle, not play/pause).
+    const focusOnPlayerContainer = e.target === containerEl
+    if (!focusOnPlayerContainer) return
     if (e.code === 'Space') {
       e.preventDefault()
       if (player.audio?.paused) void player.play()

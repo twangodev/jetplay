@@ -13,14 +13,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * Tiny loopback HTTP server that streams registered local media files to the
- * JCEF browser. Serving over http with CORS + range — rather than file:// —
- * lets the page fetch()/decode the audio (the scrubber's scratch buffer,
- * in-browser waveform decode) and range-seek large files, none of which a
- * null-origin file:// page can do.
+ * Loopback HTTP server streaming registered local media to JCEF. http+CORS+range
+ * (not file://) lets the null-origin page fetch()/decode audio and range-seek large files.
  *
- * Security: binds 127.0.0.1 only; serves ONLY files registered via [serve],
- * each under an unguessable random token (no directory listing, no traversal).
+ * Security: binds 127.0.0.1 only; serves ONLY files registered via [serve], each
+ * behind an unguessable random token (no directory listing, no traversal).
  */
 object MediaServer {
 
@@ -66,10 +63,7 @@ object MediaServer {
     private fun handle(exchange: HttpExchange) {
         try {
             val headers = exchange.responseHeaders
-            // The JCEF player page is a null-origin loadHTML document, so it has
-            // no stable origin to allowlist — ACAO:* is effectively required for
-            // it to fetch()/decode the media. The real boundary is the 122-bit
-            // token plus the loopback bind, Host check, and per-editor release.
+            // Null-origin JCEF page has no origin to allowlist; security rests on the random token + loopback bind + Host check.
             headers.add("Access-Control-Allow-Origin", "*")
 
             if (exchange.requestMethod == "OPTIONS") {
@@ -96,12 +90,10 @@ object MediaServer {
             headers.add("Content-Type", contentType(file))
             headers.add("Accept-Ranges", "bytes")
             val length = file.length()
-            // Only a single-range "bytes=" request gets partial content; multi-range,
-            // garbage, and empty files fall back to a full 200.
-            val rangeHeader = exchange.requestHeaders.getFirst("Range")
+            val singleByteRange = exchange.requestHeaders.getFirst("Range")
                 ?.takeIf { it.startsWith("bytes=") && !it.contains(',') }
-            if (rangeHeader != null && length > 0) {
-                writeRange(exchange, file, length, rangeHeader)
+            if (singleByteRange != null && length > 0) {
+                writeRange(exchange, file, length, singleByteRange)
             } else {
                 exchange.sendResponseHeaders(HTTP_OK, if (length == 0L) -1 else length)
                 file.inputStream().use { it.copyTo(exchange.responseBody) }

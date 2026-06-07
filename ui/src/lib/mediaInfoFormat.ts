@@ -1,16 +1,14 @@
-// Shared formatters for the codec inspector, used by both the audio and video
-// players so the two render identical-looking values.
+// Shared codec-inspector formatters so the audio and video players render identical values.
 
 export function formatSampleRate(hz: number): string {
-  // Keep enough precision for the conventional rates (44.1, 22.05, 11.025) while
-  // trimming trailing zeros (48000 → "48", 44100 → "44.1").
-  const k = Number((hz / 1000).toFixed(3))
-  return `${k} kHz`
+  // Precision that keeps the conventional rates (44.1, 22.05, 11.025) yet trims trailing zeros.
+  const conventionalRateDecimals = 3
+  const kHz = Number((hz / 1000).toFixed(conventionalRateDecimals))
+  return `${kHz} kHz`
 }
 
 export function formatBitrate(bps: number): string {
-  // kbps is the conventional unit at every magnitude (lossless audio and video
-  // can run several thousand kbps), so we don't switch to Mbps.
+  // kbps stays readable even for lossless streams running several thousand kbps, so never Mbps.
   return `${Math.round(bps / 1000)} kbps`
 }
 

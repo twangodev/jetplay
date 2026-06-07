@@ -7,10 +7,7 @@
 
   const config = window.jetplay ?? {}
 
-  // The IDE may push a state transition (mediaReady/error/progress) before these
-  // handlers exist — a fast transcode can finish before the page mounts — in
-  // which case the call is a silent no-op. It stashes the latest on window, so
-  // we seed from the stash here to avoid getting stuck on the loading screen.
+  // Seed from window stashes: a fast transcode can push state before these handlers mount.
   let state = $state(
     window.__jetplayReadyUrl
       ? 'ready'
@@ -22,10 +19,8 @@
   let downloadProgress = $state(window.__jetplayDownloadProgress ?? 0)
   let mediaUrl = $state(window.__jetplayReadyUrl ?? config.mediaUrl ?? '')
   let errorMessage = $state(window.__jetplayError ?? config.errorMessage ?? 'An unknown error occurred')
-  // Prefer a buffered push (the IDE may have called jetplayWaveform before this
-  // handler existed, in which case it stashed the bars on window).
+  // Prefer a buffered push: the IDE may have stashed bars before this handler existed.
   let waveform = $state(window.__jetplayWaveform ?? config.waveform ?? [])
-  // Same buffered-push pattern for the codec inspector metadata.
   let mediaInfo = $state(window.__jetplayMediaInfo ?? config.mediaInfo)
 
   const fileName = config.fileName ?? 'Unknown'
@@ -58,8 +53,7 @@
     state = 'error'
   }
 
-  // FFmpeg-decoded amplitude bars pushed from the IDE (cheaper than decoding the
-  // whole file in the browser).
+  // Amplitude bars decoded by FFmpeg in the IDE, cheaper than decoding the whole file in-browser.
   window.jetplayWaveform = (bars: number[]) => {
     waveform = bars
   }

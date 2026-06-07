@@ -59,16 +59,10 @@ class MediaLoader(
         maybeSendMediaInfo()
     }
 
-    /**
-     * Decode the waveform for local audio here with FFmpeg (off the EDT) and
-     * push the bars to the player — cheaper than the browser decoding the whole
-     * file, and works for any format. Remote sources need their download first
-     * (skipped for now); video has no waveform.
-     */
+    // FFmpeg decodes the bars off the EDT for any local audio format, cheaper than the browser decoding the whole file.
     private fun maybeSendWaveform() {
         if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
-        // Raw telephony codecs need demuxer hints the extractor doesn't apply;
-        // skip them rather than risk a garbage waveform.
+        // Raw telephony codecs lack the demuxer hints to decode cleanly, risking a garbage waveform.
         if (source.extension.lowercase() in MediaTranscoder.rawAudioExtensions) return
         val localFile = source.toLocalFile()
         waveformFuture = ApplicationManager.getApplication().executeOnPooledThread {
@@ -78,12 +72,7 @@ class MediaLoader(
         }
     }
 
-    /**
-     * Probe the file's container/codec/stream details with FFmpeg (off the EDT)
-     * and push them to the player's codec inspector — audio and video both.
-     * Local only (remote needs its download first); raw audio codecs lack the
-     * demuxer hints to probe cleanly, so they're skipped.
-     */
+    // FFmpeg probes container/codec/stream details off the EDT for the inspector; raw audio lacks the hints to probe cleanly.
     private fun maybeSendMediaInfo() {
         if (source.isRemote || !FfmpegAvailability.available) return
         if (source.extension.lowercase() in MediaTranscoder.rawAudioExtensions) return

@@ -24,12 +24,10 @@ object MediaTranscoder {
     private const val INDETERMINATE_TENTH = -1L
     private const val REPORTED_INDETERMINATE_TENTH = -2L
 
-    // Formats that JCEF (Chromium) can play natively without transcoding
+    // Chromium can play these natively, so JCEF needs no transcoding.
     private val JCEF_NATIVE_EXTENSIONS = setOf(
-        // video
         "webm",
         "ogv",
-        // audio
         "ogg",
         "oga",
         "opus",
@@ -112,9 +110,7 @@ object MediaTranscoder {
             recorder.videoBitrate = grabber.videoBitrate.takeIf { it > 0 } ?: DEFAULT_VIDEO_BITRATE
             recorder.frameRate = grabber.frameRate.takeIf { it > 0 } ?: DEFAULT_FRAME_RATE
             recorder.gopSize = DEFAULT_GOP_SIZE
-            // libvpx VP9 defaults to a very slow deadline (multiples of real time),
-            // which makes converting a normal HD clip look like it's hung. We only
-            // need a watchable preview, so encode in real time across all cores.
+            // Previews only need to be watchable; libvpx's default deadline is so slow an HD clip looks hung.
             recorder.setVideoOption("deadline", "realtime")
             recorder.setVideoOption("cpu-used", "8")
             recorder.setVideoOption("row-mt", "1")

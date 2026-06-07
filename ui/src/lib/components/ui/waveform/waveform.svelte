@@ -4,59 +4,25 @@
 	import { getComputedBarColor, heightToCssSize } from "./utils.js";
 
 	export type WaveformProps = HTMLAttributes<HTMLDivElement> & {
-		/**
-		 * Array of normalized bar values in `[0, 1]`. The component samples from
-		 * this array to fill the available width.
-		 * @default []
-		 */
+		/** Normalized bar values in `[0, 1]`, sampled to fill the width. @default [] */
 		data?: number[];
-		/**
-		 * Width of each bar in pixels.
-		 * @default 4
-		 */
+		/** @default 4 */
 		barWidth?: number;
-		/**
-		 * Minimum bar height in pixels. Bars are drawn at least this tall even
-		 * when their value is near zero.
-		 * @default 4
-		 */
+		/** Minimum bar height in px; bars never drop below it. @default 4 */
 		barHeight?: number;
-		/**
-		 * Gap between bars in pixels.
-		 * @default 2
-		 */
+		/** @default 2 */
 		barGap?: number;
-		/**
-		 * Corner radius applied to each bar. Set to `0` for square bars.
-		 * @default 2
-		 */
+		/** Corner radius per bar; `0` for square bars. @default 2 */
 		barRadius?: number;
-		/**
-		 * Custom bar color. Falls back to the canvas's computed `--foreground`
-		 * CSS variable when unset.
-		 */
+		/** Defaults to the canvas's computed `--foreground` when unset. */
 		barColor?: string;
-		/**
-		 * Fade the left and right edges of the waveform via a destination-out
-		 * gradient mask.
-		 * @default true
-		 */
+		/** Fade left/right edges via a destination-out gradient mask. @default true */
 		fadeEdges?: boolean;
-		/**
-		 * Width of the edge fade region in pixels.
-		 * @default 24
-		 */
+		/** Width of the edge fade region in px. @default 24 */
 		fadeWidth?: number;
-		/**
-		 * Height of the waveform container. Numbers are treated as pixels;
-		 * strings are passed through as a CSS length.
-		 * @default 128
-		 */
+		/** Numbers are px; strings pass through as a CSS length. @default 128 */
 		height?: string | number;
-		/**
-		 * Marks the waveform as actively capturing or rendering audio. Rendered
-		 * as `data-active` on the root element for CSS styling hooks.
-		 */
+		/** Exposed as `data-active` on the root for CSS styling hooks. */
 		active?: boolean;
 		/** Called when a bar is clicked with the data index and its value. */
 		onBarClick?: (index: number, value: number) => void;

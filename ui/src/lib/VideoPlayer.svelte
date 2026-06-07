@@ -122,14 +122,8 @@
     videoEl.playbackRate = r
   }
 
-  // The seek bar's value tracks currentTime, which is almost never on the step
-  // grid. bits-ui re-snaps an off-grid controlled value back onto the step and
-  // re-fires onValueChange for it — every timeupdate — which re-seeks the video
-  // each frame and stutters. Guard so we only seek on genuine user input: an
-  // active pointer scrub, or a keyboard nudge (caught in the capture phase so
-  // the flag is set before bits-ui's thumb handler fires onValueChange). The
-  // volume slider needs no guard — its value (0..1, and 0 on mute) is always on
-  // the grid, so bits-ui never re-snaps it.
+  // Without this guard bits-ui re-snaps the off-grid currentTime back onto the
+  // step and re-fires onValueChange every timeupdate, re-seeking each frame.
   let seekInteracting = false
   let resumeAfterScrub = false
 
@@ -140,9 +134,7 @@
     seekInteracting = true
     resumeAfterScrub = !videoEl.paused
     videoEl.pause()
-    // bits-ui releases the pointer on `document`, not the slider element, so a
-    // release off the thin track would never reach an element onpointerup and
-    // the guard would stay stuck open (re-seeking on replay). Listen on window.
+    // bits-ui releases the pointer on `document`, so listen on window or the guard sticks open.
     window.addEventListener('pointerup', endSeekScrub)
     window.addEventListener('pointercancel', endSeekScrub)
   }
@@ -155,12 +147,8 @@
       void videoEl.play()
     }
   }
-  // bits-ui's thumb handles arrow/home/end/page keys itself (moving its internal
-  // value), but the seek guard suppresses the resulting onValueChange — so those
-  // keys would desync the thumb without seeking. Intercept them in the capture
-  // phase (before the thumb sees them, via addEventListener capture in onMount —
-  // Svelte's onkeydowncapture didn't attach reliably here) and drive the seek
-  // directly, stopping propagation so bits-ui doesn't also move the thumb.
+  // Capture-phase (registered in onMount) so we seek before bits-ui's thumb moves
+  // off-grid, which the seek guard would suppress and desync.
   function onSeekKeyCapture(e: KeyboardEvent) {
     const target = e.target as HTMLElement | null
     if (!target?.closest('[data-seek-slider]')) return
@@ -198,9 +186,8 @@
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    // Only the container drives shortcuts; a focused inner control (slider,
-    // dropdown, info toggle) gets its own keys.
-    if (e.target !== containerEl) return
+    const innerControlFocused = e.target !== containerEl
+    if (innerControlFocused) return
     if (e.code === 'Space') {
       e.preventDefault()
       togglePlay()

@@ -30,11 +30,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         }
     }
 
-    // Each of these stashes its value on window before calling the handler: the
-    // transcode/download can finish before the page has mounted and defined the
-    // handler (a fast transcode easily beats the page load), in which case the
-    // `?.` call is a silent no-op. The app reads the stash on mount so the state
-    // transition (esp. mediaReady → 'ready') is never dropped, leaving it stuck.
+    // Stash on window before notifying: a fast transcode can beat page load, so the app reads the stash on mount.
     fun updateProgress(percent: Double) =
         executeJs("window.__jetplayProgress=$percent;window.jetplayUpdateProgress?.($percent)")
 
@@ -47,17 +43,13 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     fun showError(message: String) =
         executeJs("window.__jetplayError='${escapeJs(message)}';window.jetplayError?.('${escapeJs(message)}')")
 
-    // Stash the bars as well as calling the handler: extraction can finish
-    // before the page defines window.jetplayWaveform (short files), so the app
-    // reads window.__jetplayWaveform on mount to avoid dropping an early push.
+    // Same stash-then-notify race guard as updateProgress.
     fun sendWaveform(bars: List<Double>) = executeJs(
         "window.__jetplayWaveform=[${bars.joinToString(",")}];" +
             "if(window.jetplayWaveform)window.jetplayWaveform(window.__jetplayWaveform)",
     )
 
-    // Same stash-then-call pattern as sendWaveform: the probe can finish before
-    // the page defines window.jetplayMediaInfo, so the app reads
-    // window.__jetplayMediaInfo on mount to avoid dropping an early push.
+    // Same stash-then-notify race guard as updateProgress.
     fun sendMediaInfo(info: MediaInfo) {
         val json = mediaInfoJson(info) ?: return
         executeJs("window.__jetplayMediaInfo=$json;if(window.jetplayMediaInfo)window.jetplayMediaInfo(window.__jetplayMediaInfo)")
@@ -83,9 +75,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             .replace("<", "\\x3c")
             .replace(">", "\\x3e")
 
-        // The media-info payload carries arbitrary tag text and a base64 art URL,
-        // so it's built as strict JSON (a subset of JS) rather than spliced.
-        // Returns null when there's nothing to send.
+        // Built as strict JSON (a JS subset), not spliced, because it carries arbitrary tag text and a base64 art URL.
         internal fun mediaInfoJson(info: MediaInfo): String? {
             val parts = buildList {
                 info.codec?.let { add("\"codec\":${jsonString(it)}") }
