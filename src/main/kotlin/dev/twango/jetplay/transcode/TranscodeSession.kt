@@ -22,9 +22,14 @@ class TranscodeSession(
 
     private var thread: Thread? = null
 
-    // Guards the cancelled-then-onReady handoff so cancel() can't slip its
-    // release pass between the check and the callback (which re-serves media).
+    // Serializes cancel() against the onReady handoff so a racing cancel can't slip between the check and the callback.
     private val readyLock = Any()
+
+    private fun deliverIfActive(file: File) = synchronized(readyLock) {
+        if (!cancelled) {
+            onReady(file)
+        }
+    }
 
     fun start() {
         thread = thread(name = "jetplay-transcode", isDaemon = true) {
@@ -32,11 +37,7 @@ class TranscodeSession(
                 val transcoded = MediaTranscoder.transcode(inputFile) { percent ->
                     if (!cancelled) bridge.updateProgress(percent)
                 }
-                // Re-check under the lock so a racing cancel() either wins (we
-                // skip onReady) or completes only after onReady has re-served.
-                synchronized(readyLock) {
-                    if (!cancelled) onReady(transcoded)
-                }
+                deliverIfActive(transcoded)
             } catch (_: InterruptedException) {
                 log.info("Transcoding interrupted for ${inputFile.name}")
             } catch (e: Exception) {

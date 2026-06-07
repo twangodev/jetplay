@@ -28,7 +28,6 @@ object MediaServer {
     private val files = ConcurrentHashMap<String, File>()
     private const val CHUNK = 64 * 1024
 
-    // HTTP status codes, named to document intent and satisfy detekt's MagicNumber.
     private const val HTTP_OK = 200
     private const val HTTP_NO_CONTENT = 204
     private const val HTTP_PARTIAL_CONTENT = 206

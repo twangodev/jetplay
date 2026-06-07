@@ -85,7 +85,6 @@ object MediaInfoExtractor {
     private const val CHANNELS_5_1 = 6
     private const val CHANNELS_7_1 = 8
 
-    // Image-signature sniffing for embedded cover art.
     private const val IMAGE_SNIFF_MIN_BYTES = 12
     private const val WEBP_BRAND_OFFSET = 8
     private val SIG_JPEG = intArrayOf(0xFF, 0xD8, 0xFF)
@@ -227,7 +226,6 @@ object MediaInfoExtractor {
         }
     }
 
-    /** Returns the cover-art `data:` URL from an attached-picture stream, or null. */
     private fun albumArtFromStream(stream: AVStream): String? {
         if (stream.disposition() and avformat.AV_DISPOSITION_ATTACHED_PIC == 0) return null
         val pkt = stream.attached_pic()

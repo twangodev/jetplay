@@ -134,8 +134,7 @@
   })
 
   // Fallback only: decode in-browser when the IDE didn't supply bars (capped).
-  // Keyed to `src` so a new track re-decodes, and the in-flight `src` is captured
-  // so a late-resolving decode for an old source can't clobber newer bars.
+  // A late-resolving decode for an old src must not clobber newer bars.
   let decodedSrc: string | null = null
   $effect(() => {
     const dur = player.duration
