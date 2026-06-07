@@ -83,9 +83,10 @@ test('media-info push renders the summary and expands into a grid', async ({ loa
 
   const summary = page.locator('[data-slot="media-info-summary"]')
   await expect(summary).toBeVisible()
-  await expect(summary).toContainText('WAV')
   await expect(summary).toContainText('48 kHz')
   await expect(summary).toContainText('stereo')
+  // Container is not duplicated in the summary — the badge already shows it.
+  await expect(summary).not.toContainText('WAV')
 
   // Grid is collapsed until the header is clicked.
   await expect(page.locator('[data-slot="media-info-grid"]')).toHaveCount(0)
@@ -95,6 +96,9 @@ test('media-info push renders the summary and expands into a grid', async ({ loa
   await expect(grid).toBeVisible()
   await expect(grid).toContainText('Codec')
   await expect(grid).toContainText('pcm_s16le')
+  // The exact container lives in the grid instead of the summary.
+  await expect(grid).toContainText('Container')
+  await expect(grid).toContainText('WAV')
   await expect(grid).toContainText('Bitrate')
   await expect(grid).toContainText('1536 kbps')
 })

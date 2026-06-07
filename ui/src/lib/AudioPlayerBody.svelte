@@ -106,8 +106,9 @@
   const summaryLine = $derived.by(() => {
     const m = mediaInfo
     if (!m) return ''
+    // Container is intentionally omitted — the extension badge already conveys
+    // the format. The exact demux container still shows in the expanded grid.
     const parts: string[] = []
-    if (m.container) parts.push(m.container.toUpperCase())
     if (m.sampleRateHz) parts.push(formatSampleRate(m.sampleRateHz))
     if (m.bitDepth) parts.push(m.bitDepth)
     if (m.channelLabel) parts.push(m.channelLabel)
