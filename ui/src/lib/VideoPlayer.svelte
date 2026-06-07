@@ -20,7 +20,7 @@
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import { cn } from '$lib/utils.js'
   import { formatTime } from './formatTime'
-  import { formatBitrate, formatBytes, formatFrameRate, formatSampleRate } from './mediaInfoFormat'
+  import { videoInfoRows, audioInfoRows, generalInfoRows } from './mediaInfoRows'
 
   let {
     src,
@@ -49,44 +49,12 @@
     muted || volume === 0 ? VolumeX : volume <= 0.33 ? Volume : volume <= 0.66 ? Volume1 : Volume2,
   )
 
-  // --- Codec inspector rows (video / audio / general / tags) ---
-  type InfoRow = { label: string; value: string }
-  const videoRows = $derived.by<InfoRow[]>(() => {
-    const m = mediaInfo
-    if (!m) return []
-    const rows: InfoRow[] = []
-    if (m.width && m.height) rows.push({ label: 'Resolution', value: `${m.width}×${m.height}` })
-    if (m.frameRate) rows.push({ label: 'Frame rate', value: formatFrameRate(m.frameRate) })
-    if (m.videoCodec) rows.push({ label: 'Video codec', value: m.videoCodec })
-    if (m.pixelFormat) rows.push({ label: 'Color', value: m.pixelFormat })
-    if (m.videoBitrateBps) rows.push({ label: 'Video bitrate', value: formatBitrate(m.videoBitrateBps) })
-    return rows
-  })
-  const audioRows = $derived.by<InfoRow[]>(() => {
-    const m = mediaInfo
-    if (!m) return []
-    const rows: InfoRow[] = []
-    if (m.codec) rows.push({ label: 'Audio codec', value: m.codec })
-    if (m.sampleRateHz) rows.push({ label: 'Sample rate', value: formatSampleRate(m.sampleRateHz) })
-    if (m.channels)
-      rows.push({ label: 'Channels', value: m.channelLabel ? `${m.channels} (${m.channelLabel})` : String(m.channels) })
-    if (m.bitDepth) rows.push({ label: 'Bit depth', value: m.bitDepth })
-    if (m.bitrateBps) rows.push({ label: 'Audio bitrate', value: formatBitrate(m.bitrateBps) })
-    return rows
-  })
-  const generalRows = $derived.by<InfoRow[]>(() => {
-    const m = mediaInfo
-    if (!m) return []
-    const rows: InfoRow[] = []
-    if (m.container) rows.push({ label: 'Container', value: m.container.toUpperCase() })
-    if (m.durationMs) rows.push({ label: 'Duration', value: formatTime(m.durationMs / 1000) })
-    if (m.sizeBytes) rows.push({ label: 'Size', value: formatBytes(m.sizeBytes) })
-    return rows
-  })
+  const videoRows = $derived(videoInfoRows(mediaInfo))
+  const audioRows = $derived(audioInfoRows(mediaInfo))
+  const generalRows = $derived(generalInfoRows(mediaInfo))
   const tags = $derived(mediaInfo?.tags ?? [])
   const hasMediaInfo = $derived(videoRows.length + audioRows.length + generalRows.length + tags.length > 0)
 
-  // --- Controls ---
   const seekMax = $derived(Number.isFinite(duration) && duration > 0 ? duration : 0)
 
   function togglePlay() {
@@ -240,23 +208,28 @@
     }}
   ></video>
 
-  <!-- Top bar: filename + inspector toggle (auto-hides with the controls) -->
+  {@render topBar()}
+  {@render inspectorPanel()}
+  {@render bottomControls()}
+</div>
+
+{#snippet titleRow()}
+  <span class="shrink-0 text-sm font-medium text-white/50">jetplay :</span>
+  <span class="truncate text-sm font-medium">{fileName}</span>
+  {#if extension}
+    <span class="shrink-0 rounded-sm border border-white/30 px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase">
+      {extension}
+    </span>
+  {/if}
+{/snippet}
+
+{#snippet topBar()}
   <div
     class="absolute top-0 right-0 left-0 transition-opacity duration-300"
     class:opacity-0={!controlsVisible}
     class:pointer-events-none={!controlsVisible}
   >
     <div class="bg-gradient-to-b from-black/70 to-transparent px-3 pt-2 pb-8">
-      {#snippet titleRow()}
-        <span class="shrink-0 text-sm font-medium text-white/50">jetplay :</span>
-        <span class="truncate text-sm font-medium">{fileName}</span>
-        {#if extension}
-          <span class="shrink-0 rounded-sm border border-white/30 px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase">
-            {extension}
-          </span>
-        {/if}
-      {/snippet}
-
       {#if hasMediaInfo}
         <button
           type="button"
@@ -276,8 +249,9 @@
       {/if}
     </div>
   </div>
+{/snippet}
 
-  <!-- Inspector panel -->
+{#snippet inspectorPanel()}
   {#if hasMediaInfo && infoExpanded}
     {@const group = 'grid grid-cols-[auto_1fr] gap-x-4 gap-y-1'}
     <div
@@ -320,117 +294,126 @@
       {/if}
     </div>
   {/if}
+{/snippet}
 
-  <!-- Bottom controls -->
+{#snippet bottomControls()}
   <div
     class="absolute right-0 bottom-0 left-0 transition-opacity duration-300"
     class:opacity-0={!controlsVisible}
     class:pointer-events-none={!controlsVisible}
   >
     <div class="bg-gradient-to-t from-black/70 to-transparent px-3 pt-10 pb-2 text-white">
-      <!-- Seek -->
-      <SliderPrimitive.Root
-        type="single"
-        value={currentTime}
-        min={0}
-        max={seekMax}
-        step={0.1}
-        aria-label="Seek"
-        data-seek-slider
-        onValueChange={onSeekChange}
-        onpointerdown={onSeekPointerDown}
-        class="group/seek relative flex h-4 w-full touch-none items-center select-none"
-      >
-        {#snippet children({ thumbItems })}
-          <span class="relative h-[3px] w-full grow overflow-hidden rounded-full bg-white/25">
-            <SliderPrimitive.Range class="absolute h-full bg-white" />
-          </span>
-          {#each thumbItems as thumb (thumb.index)}
-            <SliderPrimitive.Thumb
-              index={thumb.index}
-              class="block size-3 rounded-full bg-white opacity-0 transition-opacity group-hover/seek:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
-            />
-          {/each}
-        {/snippet}
-      </SliderPrimitive.Root>
-
+      {@render seekBar()}
       <div class="mt-1 flex items-center gap-1.5">
-        <button class={btn} onclick={() => skip(-10)} aria-label="Back 10 seconds">
-          <SkipBack class="size-4" />
-        </button>
-        <button class={btn} onclick={() => frameStep(-1)} aria-label="Previous frame">
-          <StepBack class="size-4" />
-        </button>
-        <button class={btn} onclick={togglePlay} aria-label={paused ? 'Play' : 'Pause'}>
-          {#if paused}
-            <Play class="size-5" fill="currentColor" />
-          {:else}
-            <Pause class="size-5" fill="currentColor" />
-          {/if}
-        </button>
-        <button class={btn} onclick={() => frameStep(1)} aria-label="Next frame">
-          <StepForward class="size-4" />
-        </button>
-        <button class={btn} onclick={() => skip(10)} aria-label="Forward 10 seconds">
-          <SkipForward class="size-4" />
-        </button>
-
+        {@render transportButtons()}
         <span class="ml-1 text-xs tabular-nums opacity-80">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
-
-        <!-- Volume -->
-        <div class="ml-2 flex items-center gap-1.5">
-          <button class={btn} onclick={toggleMute} aria-label="Toggle mute">
-            <VolumeIcon class="size-4" />
-          </button>
-          <SliderPrimitive.Root
-            type="single"
-            value={muted ? 0 : volume}
-            min={0}
-            max={1}
-            step={0.01}
-            aria-label="Volume"
-            onValueChange={(v) => setVolume(v)}
-            class="group/vol relative flex h-4 w-16 touch-none items-center select-none"
-          >
-            {#snippet children({ thumbItems })}
-              <span class="relative h-[3px] w-full grow overflow-hidden rounded-full bg-white/25">
-                <SliderPrimitive.Range class="absolute h-full bg-white" />
-              </span>
-              {#each thumbItems as thumb (thumb.index)}
-                <SliderPrimitive.Thumb
-                  index={thumb.index}
-                  class="block size-3 rounded-full bg-white opacity-0 transition-opacity group-hover/vol:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
-                />
-              {/each}
-            {/snippet}
-          </SliderPrimitive.Root>
-        </div>
-
+        {@render volumeControl()}
         <span class="flex-1"></span>
-
-        <!-- Speed -->
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            {#snippet child({ props })}
-              <button {...props} class={btn} aria-label="Playback speed">
-                <Gauge class="size-4" />
-              </button>
-            {/snippet}
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content align="end" class="min-w-[120px]">
-            {#each PLAYBACK_SPEEDS as speed (speed)}
-              <DropdownMenu.Item onclick={() => setSpeed(speed)} class="flex items-center justify-between">
-                <span class={speed === 1 ? '' : 'font-mono'}>{speed === 1 ? 'Normal' : `${speed}x`}</span>
-                {#if playbackRate === speed}
-                  <Check class="size-4" />
-                {/if}
-              </DropdownMenu.Item>
-            {/each}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+        {@render speedMenu()}
       </div>
     </div>
   </div>
-</div>
+{/snippet}
+
+{#snippet seekBar()}
+  <SliderPrimitive.Root
+    type="single"
+    value={currentTime}
+    min={0}
+    max={seekMax}
+    step={0.1}
+    aria-label="Seek"
+    data-seek-slider
+    onValueChange={onSeekChange}
+    onpointerdown={onSeekPointerDown}
+    class="group/seek relative flex h-4 w-full touch-none items-center select-none"
+  >
+    {#snippet children({ thumbItems })}
+      <span class="relative h-[3px] w-full grow overflow-hidden rounded-full bg-white/25">
+        <SliderPrimitive.Range class="absolute h-full bg-white" />
+      </span>
+      {#each thumbItems as thumb (thumb.index)}
+        <SliderPrimitive.Thumb
+          index={thumb.index}
+          class="block size-3 rounded-full bg-white opacity-0 transition-opacity group-hover/seek:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
+        />
+      {/each}
+    {/snippet}
+  </SliderPrimitive.Root>
+{/snippet}
+
+{#snippet transportButtons()}
+  <button class={btn} onclick={() => skip(-10)} aria-label="Back 10 seconds">
+    <SkipBack class="size-4" />
+  </button>
+  <button class={btn} onclick={() => frameStep(-1)} aria-label="Previous frame">
+    <StepBack class="size-4" />
+  </button>
+  <button class={btn} onclick={togglePlay} aria-label={paused ? 'Play' : 'Pause'}>
+    {#if paused}
+      <Play class="size-5" fill="currentColor" />
+    {:else}
+      <Pause class="size-5" fill="currentColor" />
+    {/if}
+  </button>
+  <button class={btn} onclick={() => frameStep(1)} aria-label="Next frame">
+    <StepForward class="size-4" />
+  </button>
+  <button class={btn} onclick={() => skip(10)} aria-label="Forward 10 seconds">
+    <SkipForward class="size-4" />
+  </button>
+{/snippet}
+
+{#snippet volumeControl()}
+  <div class="ml-2 flex items-center gap-1.5">
+    <button class={btn} onclick={toggleMute} aria-label="Toggle mute">
+      <VolumeIcon class="size-4" />
+    </button>
+    <SliderPrimitive.Root
+      type="single"
+      value={muted ? 0 : volume}
+      min={0}
+      max={1}
+      step={0.01}
+      aria-label="Volume"
+      onValueChange={(v) => setVolume(v)}
+      class="group/vol relative flex h-4 w-16 touch-none items-center select-none"
+    >
+      {#snippet children({ thumbItems })}
+        <span class="relative h-[3px] w-full grow overflow-hidden rounded-full bg-white/25">
+          <SliderPrimitive.Range class="absolute h-full bg-white" />
+        </span>
+        {#each thumbItems as thumb (thumb.index)}
+          <SliderPrimitive.Thumb
+            index={thumb.index}
+            class="block size-3 rounded-full bg-white opacity-0 transition-opacity group-hover/vol:opacity-100 focus-visible:opacity-100 focus-visible:outline-none"
+          />
+        {/each}
+      {/snippet}
+    </SliderPrimitive.Root>
+  </div>
+{/snippet}
+
+{#snippet speedMenu()}
+  <DropdownMenu.Root>
+    <DropdownMenu.Trigger>
+      {#snippet child({ props })}
+        <button {...props} class={btn} aria-label="Playback speed">
+          <Gauge class="size-4" />
+        </button>
+      {/snippet}
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Content align="end" class="min-w-[120px]">
+      {#each PLAYBACK_SPEEDS as speed (speed)}
+        <DropdownMenu.Item onclick={() => setSpeed(speed)} class="flex items-center justify-between">
+          <span class={speed === 1 ? '' : 'font-mono'}>{speed === 1 ? 'Normal' : `${speed}x`}</span>
+          {#if playbackRate === speed}
+            <Check class="size-4" />
+          {/if}
+        </DropdownMenu.Item>
+      {/each}
+    </DropdownMenu.Content>
+  </DropdownMenu.Root>
+{/snippet}
