@@ -21,7 +21,6 @@
   import { cn } from '$lib/utils.js'
   import { formatTime } from './formatTime'
   import { formatBitrate, formatBytes, formatFrameRate, formatSampleRate } from './mediaInfoFormat'
-  import Branding from './Branding.svelte'
 
   let {
     src,
@@ -248,6 +247,16 @@
     class:pointer-events-none={!controlsVisible}
   >
     <div class="bg-gradient-to-b from-black/70 to-transparent px-3 pt-2 pb-8">
+      {#snippet titleRow()}
+        <span class="shrink-0 text-sm font-medium text-white/50">jetplay :</span>
+        <span class="truncate text-sm font-medium">{fileName}</span>
+        {#if extension}
+          <span class="shrink-0 rounded-sm border border-white/30 px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase">
+            {extension}
+          </span>
+        {/if}
+      {/snippet}
+
       {#if hasMediaInfo}
         <button
           type="button"
@@ -257,22 +266,12 @@
           aria-label="Toggle media details"
           onclick={() => (infoExpanded = !infoExpanded)}
         >
-          <span class="truncate text-sm font-medium">{fileName}</span>
-          {#if extension}
-            <span class="shrink-0 rounded-sm border border-white/30 px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase">
-              {extension}
-            </span>
-          {/if}
+          {@render titleRow()}
           <ChevronDown class={cn('ml-auto size-4 shrink-0 transition-transform', infoExpanded && 'rotate-180')} />
         </button>
       {:else}
         <div class="flex items-center gap-2 text-white">
-          <span class="truncate text-sm font-medium">{fileName}</span>
-          {#if extension}
-            <span class="shrink-0 rounded-sm border border-white/30 px-1.5 py-0.5 text-[11px] font-medium tracking-wide uppercase">
-              {extension}
-            </span>
-          {/if}
+          {@render titleRow()}
         </div>
       {/if}
     </div>
@@ -355,8 +354,7 @@
         {/snippet}
       </SliderPrimitive.Root>
 
-      <!-- Transport (pr clears the fixed "jetplay" watermark in the corner) -->
-      <div class="mt-1 flex items-center gap-1.5 pr-12">
+      <div class="mt-1 flex items-center gap-1.5">
         <button class={btn} onclick={() => skip(-10)} aria-label="Back 10 seconds">
           <SkipBack class="size-4" />
         </button>
@@ -435,6 +433,4 @@
       </div>
     </div>
   </div>
-
-  <Branding variant="video" />
 </div>
