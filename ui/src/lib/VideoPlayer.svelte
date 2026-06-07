@@ -16,8 +16,6 @@
     VolumeX,
     Gauge,
     Check,
-    Maximize,
-    Minimize,
   } from '@lucide/svelte'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js'
   import { cn } from '$lib/utils.js'
@@ -40,7 +38,6 @@
   let volume = $state(1)
   let muted = $state(false)
   let playbackRate = $state(1)
-  let isFullscreen = $state(false)
   let controlsVisible = $state(true)
   let infoExpanded = $state(false)
   let hideTimer: ReturnType<typeof setTimeout>
@@ -123,10 +120,6 @@
   function setSpeed(r: number) {
     playbackRate = r
     videoEl.playbackRate = r
-  }
-  function toggleFullscreen() {
-    if (document.fullscreenElement) void document.exitFullscreen()
-    else void containerEl.requestFullscreen?.()
   }
 
   // The seek bar's value tracks currentTime, which is almost never on the step
@@ -217,9 +210,6 @@
     } else if (e.code === 'ArrowRight') {
       e.preventDefault()
       skip(5)
-    } else if (e.code === 'KeyF') {
-      e.preventDefault()
-      toggleFullscreen()
     } else if (e.code === 'KeyM') {
       e.preventDefault()
       toggleMute()
@@ -228,13 +218,8 @@
 
   onMount(() => {
     containerEl?.focus()
-    const onFsChange = () => (isFullscreen = !!document.fullscreenElement)
-    document.addEventListener('fullscreenchange', onFsChange)
     containerEl.addEventListener('keydown', onSeekKeyCapture, { capture: true })
-    return () => {
-      document.removeEventListener('fullscreenchange', onFsChange)
-      containerEl.removeEventListener('keydown', onSeekKeyCapture, { capture: true })
-    }
+    return () => containerEl.removeEventListener('keydown', onSeekKeyCapture, { capture: true })
   })
 </script>
 
@@ -460,15 +445,6 @@
             {/each}
           </DropdownMenu.Content>
         </DropdownMenu.Root>
-
-        <!-- Fullscreen -->
-        <button class={btn} onclick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-          {#if isFullscreen}
-            <Minimize class="size-4" />
-          {:else}
-            <Maximize class="size-4" />
-          {/if}
-        </button>
       </div>
     </div>
   </div>

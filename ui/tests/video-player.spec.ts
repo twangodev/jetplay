@@ -46,9 +46,6 @@ test('modern transport controls are present', async ({ loadApp }) => {
   ]) {
     await expect(page.locator(`button[aria-label="${label}"]`)).toBeVisible()
   }
-  await expect(
-    page.locator('button[aria-label="Fullscreen"], button[aria-label="Exit fullscreen"]'),
-  ).toBeVisible()
 })
 
 test('forward 10s button advances time', async ({ loadApp }) => {
