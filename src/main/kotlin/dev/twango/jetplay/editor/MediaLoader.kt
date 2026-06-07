@@ -141,7 +141,18 @@ class MediaLoader(
     }
 
     private fun showTranscodingError() {
-        bridge.showError(JetPlayBundle.message("error.transcoding.message"))
+        // Load the shell in the error state: this runs before any page exists, so a
+        // bridge.showError() JS push would have nothing to render against.
+        htmlLoader.load(
+            PlayerConfig(
+                state = "error",
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                errorMessage = JetPlayBundle.message("error.transcoding.message"),
+                ui = uiStrings,
+            ),
+        )
         NotificationGroupManager.getInstance()
             .getNotificationGroup(JetPlayConstants.NOTIFICATION_GROUP_ID)
             .createNotification(
