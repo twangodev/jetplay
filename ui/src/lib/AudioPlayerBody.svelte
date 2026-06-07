@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte'
-  import { slide } from 'svelte/transition'
+  import { fade, slide } from 'svelte/transition'
   import { Slider as SliderPrimitive } from 'bits-ui'
   import { ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
   import {
@@ -116,9 +116,13 @@
     return parts.join(' · ')
   })
 
-  // Only treat info as present when there's at least one row to show, so an
+  // Embedded text tags (title/artist/album/…) and cover art the IDE probed.
+  const tags = $derived(mediaInfo?.tags ?? [])
+  const albumArt = $derived(mediaInfo?.albumArt)
+
+  // Only treat info as present when there's something to expand into, so an
   // empty/degenerate push never renders a chevron with nothing behind it.
-  const hasMediaInfo = $derived(infoRows.length > 0)
+  const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
 
   // sv11 colors the bars a muted gray rather than full --foreground. jetplay
   // tracks the IDE theme via prefers-color-scheme (dark unless prefers-light).
@@ -264,11 +268,23 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={containerEl}
-  class="flex-1 flex items-center justify-center p-6 select-none outline-none"
+  class="relative flex-1 flex items-center justify-center overflow-hidden p-6 select-none outline-none"
   onkeydown={handleKeydown}
   tabindex="-1"
 >
-  <div class="relative w-full max-w-md space-y-4 rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+  {#if albumArt}
+    <!-- Ambient blurred cover behind the card — no thumbnail, just the wash of color. -->
+    <div
+      class="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden="true"
+      data-slot="album-art"
+      transition:fade={{ duration: 400 }}
+    >
+      <img src={albumArt} alt="" class="h-full w-full scale-125 object-cover opacity-40 blur-3xl saturate-150" />
+      <div class="absolute inset-0 bg-background/50"></div>
+    </div>
+  {/if}
+  <div class="relative z-10 w-full max-w-md space-y-4 rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
     <!-- Metadata header — expands into the codec inspector when info is available -->
     <div class="space-y-1.5">
       {#snippet nameAndBadge()}
@@ -285,7 +301,7 @@
           type="button"
           class="flex w-full items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           aria-expanded={infoExpanded}
-          aria-controls="media-info-grid"
+          aria-controls="media-info-panel"
           aria-label="Toggle media details"
           onclick={() => (infoExpanded = !infoExpanded)}
         >
@@ -314,16 +330,31 @@
       {/if}
 
       {#if hasMediaInfo && infoExpanded}
-        <div
-          id="media-info-grid"
-          data-slot="media-info-grid"
-          transition:slide={{ duration: 250 }}
-          class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-foreground/5 p-3 text-xs"
-        >
-          {#each infoRows as row (row.label)}
-            <span class="text-muted-foreground">{row.label}</span>
-            <span class="text-right font-mono text-foreground">{row.value}</span>
-          {/each}
+        <div id="media-info-panel" transition:slide={{ duration: 250 }} class="space-y-3">
+          {#if tags.length > 0}
+            <!-- Descriptive embedded tags (what is this) -->
+            <div
+              data-slot="media-info-tags"
+              class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-foreground/5 p-3 text-xs"
+            >
+              {#each tags as tag (tag.label)}
+                <span class="text-muted-foreground">{tag.label}</span>
+                <span class="break-words text-foreground">{tag.value}</span>
+              {/each}
+            </div>
+          {/if}
+          {#if infoRows.length > 0}
+            <!-- Technical stream details (how it's encoded) -->
+            <div
+              data-slot="media-info-grid"
+              class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-foreground/5 p-3 text-xs"
+            >
+              {#each infoRows as row (row.label)}
+                <span class="text-muted-foreground">{row.label}</span>
+                <span class="font-mono text-foreground">{row.value}</span>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

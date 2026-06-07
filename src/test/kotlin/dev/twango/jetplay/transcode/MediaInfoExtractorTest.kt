@@ -41,9 +41,27 @@ class MediaInfoExtractorTest {
             assertTrue(sizeBytes!! > 0L)
 
             assertNotNull("PCM WAV has a derivable bitrate", info.bitrateBps)
+            assertTrue("a bare generated WAV carries no tags", info.tags.isEmpty())
+            assertNull("a bare generated WAV has no cover art", info.albumArt)
         } finally {
             wav.delete()
         }
+    }
+
+    @Test
+    fun buildTagsOrdersLabelsAndSkipsBlanksAndUnknowns() {
+        val tags = MediaInfoExtractor.buildTags(
+            mapOf(
+                "ARTIST" to "Daft Punk", // upper-case key still matches
+                "title" to "Aerodynamic",
+                "album" to "Discovery",
+                "date" to "2001",
+                "genre" to "   ", // blank -> skipped
+                "unknown_key" to "x", // not a surfaced field -> skipped
+            ),
+        )
+        assertEquals(listOf("Title", "Artist", "Album", "Date"), tags.map { it.label })
+        assertEquals("Aerodynamic", tags.first().value)
     }
 
     @Test

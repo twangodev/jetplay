@@ -13,6 +13,8 @@ declare global {
     bitrateBps?: number
     durationMs?: number
     sizeBytes?: number
+    tags?: { label: string; value: string }[]
+    albumArt?: string
   }
 
   interface Window {

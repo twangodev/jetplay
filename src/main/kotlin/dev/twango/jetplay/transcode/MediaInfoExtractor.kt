@@ -1,10 +1,12 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import org.bytedeco.ffmpeg.global.avformat
 import org.bytedeco.ffmpeg.global.avutil
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
+import java.util.Base64
 
 /**
  * Technical metadata for the "codec inspector" expandable header in the player.
@@ -22,7 +24,14 @@ data class MediaInfo(
     val bitrateBps: Long?,
     val durationMs: Long?,
     val sizeBytes: Long?,
+    /** Embedded text tags (title/artist/album/…), in display order. */
+    val tags: List<MediaTag> = emptyList(),
+    /** Embedded cover art as a `data:` URL, or null when there is none. */
+    val albumArt: String? = null,
 )
+
+/** One embedded metadata tag, already labeled for display. */
+data class MediaTag(val label: String, val value: String)
 
 /**
  * Probes an audio file's container/codec/stream details with the bundled FFmpeg.
@@ -39,6 +48,27 @@ object MediaInfoExtractor {
     // Lossy codecs decode to float internally, so their "bit depth" would be
     // misleading — we omit it for those.
     private val LOSSLESS = setOf("flac", "alac", "wavpack", "truehd", "mlp", "tta", "als")
+
+    // Cover art over this is skipped — it would only bloat the bridge payload,
+    // and a blurred background needs no fidelity. Typical embedded art is < 1 MB.
+    private const val MAX_ART_BYTES = 4_000_000
+
+    // Embedded tags to surface, in display order, mapped from FFmpeg's
+    // normalized (lowercase) metadata keys to a human label.
+    private val TAG_FIELDS = listOf(
+        "title" to "Title",
+        "artist" to "Artist",
+        "album" to "Album",
+        "album_artist" to "Album artist",
+        "composer" to "Composer",
+        "track" to "Track",
+        "disc" to "Disc",
+        "date" to "Date",
+        "genre" to "Genre",
+        "publisher" to "Publisher",
+        "comment" to "Comment",
+        "rating" to "Rating",
+    )
 
     /** Returns the file's audio metadata, or null if it has no readable audio. */
     fun extract(file: File): MediaInfo? {
@@ -65,6 +95,8 @@ object MediaInfoExtractor {
                 bitrateBps = bitrate,
                 durationMs = durationMs,
                 sizeBytes = sizeBytes,
+                tags = buildTags(grabber.metadata ?: emptyMap()),
+                albumArt = extractAlbumArt(grabber),
             )
         } catch (e: Exception) {
             log.warn("Media info extraction failed for ${file.name}", e)
@@ -111,6 +143,55 @@ object MediaInfoExtractor {
             }
         }
         return null
+    }
+
+    /** Maps FFmpeg's metadata map to an ordered, labeled list of display tags. */
+    internal fun buildTags(metadata: Map<String, String>): List<MediaTag> {
+        if (metadata.isEmpty()) return emptyList()
+        // FFmpeg keys are normally lowercase, but be tolerant of odd containers.
+        val lower = metadata.entries.associate { it.key.lowercase() to it.value }
+        return TAG_FIELDS.mapNotNull { (key, label) ->
+            lower[key]?.trim()?.takeIf { it.isNotEmpty() }?.let { MediaTag(label, it) }
+        }
+    }
+
+    /**
+     * Reads the first attached-picture stream's raw image bytes (the packet data
+     * IS the encoded cover) and returns it as a `data:` URL for the UI to blur
+     * behind the player. No decode/re-encode — just sniff the type and base64.
+     */
+    private fun extractAlbumArt(grabber: FFmpegFrameGrabber): String? {
+        return try {
+            val oc = grabber.formatContext ?: return null
+            for (i in 0 until oc.nb_streams()) {
+                val stream = oc.streams(i)
+                if (stream.disposition() and avformat.AV_DISPOSITION_ATTACHED_PIC == 0) continue
+                val pkt = stream.attached_pic()
+                val size = pkt.size()
+                if (size <= 0 || size > MAX_ART_BYTES) continue
+                val data = pkt.data() ?: continue
+                val bytes = ByteArray(size)
+                data.capacity(size.toLong()).get(bytes)
+                val mime = sniffImageMime(bytes) ?: continue
+                return "data:$mime;base64,${Base64.getEncoder().encodeToString(bytes)}"
+            }
+            null
+        } catch (e: Exception) {
+            log.warn("Album art extraction failed", e)
+            null
+        }
+    }
+
+    private fun sniffImageMime(b: ByteArray): String? {
+        if (b.size < 12) return null
+        fun at(i: Int, vararg bytes: Int) = bytes.withIndex().all { (k, v) -> b[i + k] == v.toByte() }
+        return when {
+            at(0, 0xFF, 0xD8, 0xFF) -> "image/jpeg"
+            at(0, 0x89, 0x50, 0x4E, 0x47) -> "image/png"
+            at(0, 0x47, 0x49, 0x46) -> "image/gif" // GIF
+            at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50) -> "image/webp" // RIFF…WEBP
+            else -> null
+        }
     }
 
     private inline fun safely(action: String, block: () -> Unit) {

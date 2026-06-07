@@ -103,6 +103,43 @@ test('media-info push renders the summary and expands into a grid', async ({ loa
   await expect(grid).toContainText('1536 kbps')
 })
 
+// Embedded tags render in their own group in the expanded panel, and embedded
+// cover art becomes a blurred ambient background (not a thumbnail).
+test('embedded tags render in the expanded panel and album art blurs the background', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  await expect(page.locator('[data-slot="album-art"]')).toHaveCount(0)
+
+  const art =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+  await page.evaluate((cover) => {
+    window.jetplayMediaInfo?.({
+      codec: 'flac',
+      container: 'flac',
+      sampleRateHz: 44100,
+      channels: 2,
+      channelLabel: 'stereo',
+      tags: [
+        { label: 'Title', value: 'Aerodynamic' },
+        { label: 'Artist', value: 'Daft Punk' },
+        { label: 'Album', value: 'Discovery' },
+      ],
+      albumArt: cover,
+    })
+  }, art)
+
+  // Cover art appears as the ambient blurred background layer.
+  await expect(page.locator('[data-slot="album-art"]')).toBeVisible()
+
+  // Tags live in their own group, revealed on expand.
+  await expect(page.locator('[data-slot="media-info-tags"]')).toHaveCount(0)
+  await page.locator('[aria-label="Toggle media details"]').click()
+  const tagsPanel = page.locator('[data-slot="media-info-tags"]')
+  await expect(tagsPanel).toBeVisible()
+  await expect(tagsPanel).toContainText('Title')
+  await expect(tagsPanel).toContainText('Aerodynamic')
+  await expect(tagsPanel).toContainText('Daft Punk')
+})
+
 // Regression: the player container's Space shortcut must not swallow the
 // toggle button's native activation. Space on the focused toggle expands the
 // inspector and must NOT start playback.
