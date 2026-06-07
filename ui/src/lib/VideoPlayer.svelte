@@ -277,7 +277,7 @@
         </div>
       {/if}
       {#if generalRows.length}
-        <div class={cn(group, 'mt-2 border-t border-white/10 pt-2')}>
+        <div class={cn(group, (videoRows.length || audioRows.length) && 'mt-2 border-t border-white/10 pt-2')}>
           {#each generalRows as r (r.label)}
             <span class="text-white/60">{r.label}</span>
             <span class="font-mono break-words">{r.value}</span>
@@ -285,7 +285,7 @@
         </div>
       {/if}
       {#if tags.length}
-        <div class={cn(group, 'mt-2 border-t border-white/10 pt-2')}>
+        <div class={cn(group, (videoRows.length || audioRows.length || generalRows.length) && 'mt-2 border-t border-white/10 pt-2')}>
           {#each tags as t (t.label)}
             <span class="text-white/60">{t.label}</span>
             <span class="break-words">{t.value}</span>
