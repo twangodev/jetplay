@@ -2,10 +2,7 @@
 	import type { Snippet } from "svelte";
 
 	export type AudioPlayerProps = {
-		/**
-		 * Sub-components that read the shared player state via context
-		 * (e.g. `<AudioPlayer.Button />`, `<AudioPlayer.Progress />`).
-		 */
+		/** Sub-components that read the shared player state via context (e.g. `<AudioPlayer.Button />`). */
 		children?: Snippet;
 	};
 </script>
@@ -48,11 +45,7 @@
 	});
 </script>
 
-<!--
-	jetplay: no `crossorigin` here. The element doesn't feed a Web-Audio analyser
-	(jetplay has no orb visualizers), so the attribute would only add a needless
-	CORS dependency on the media element. (Upstream sv11 sets it for its orbs.)
--->
+<!-- No `crossorigin`: jetplay has no Web-Audio analyser, so it would only add a needless CORS dependency. -->
 <audio
 	bind:this={audioEl}
 	data-slot="audio-player"

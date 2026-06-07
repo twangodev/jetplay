@@ -30,9 +30,7 @@
 	let isDragging = $state(false);
 	let localProgress = $state(0);
 
-	// Stable fallback seed per component instance — diverges from React's per-render
-	// `Math.random()` (which is unstable anyway). Deterministic filler bars when no
-	// data is provided.
+	// Seeded once per instance so fallback filler bars stay stable across re-renders.
 	const fallbackSeed = Math.random();
 
 	const waveformData = $derived(

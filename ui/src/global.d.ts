@@ -1,8 +1,7 @@
 export {}
 
 declare global {
-  // Technical metadata for the codec inspector. Every field is optional — the
-  // IDE omits anything FFmpeg couldn't determine, and the UI skips it.
+  // Codec inspector metadata; fields are optional because FFmpeg may not determine every value.
   interface MediaInfo {
     codec?: string
     container?: string

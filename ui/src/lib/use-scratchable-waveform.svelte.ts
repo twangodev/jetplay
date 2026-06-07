@@ -1,8 +1,6 @@
 import type { AudioGraph, AudioPlayerState } from "$lib/components/ui/audio-player/index.js";
 
-// Module-level cache, intentionally non-reactive: keyed by track URL so
-// navigating away and back reuses the decode, and concurrent pointerdowns
-// dedupe onto one in-flight promise.
+// Non-reactive, URL-keyed so revisits reuse the decode and concurrent pointerdowns dedupe onto one promise.
 // eslint-disable-next-line svelte/prefer-svelte-reactivity
 const scratchBufferCache = new Map<string, Promise<AudioBuffer | null>>();
 
@@ -62,9 +60,7 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 		offset = next;
 		const totalW = opts.totalWidth();
 		if (totalW <= 0) return;
-		// Playhead pinned at the RIGHT edge (sv11): offset containerWidth = start,
-		// containerWidth - totalW = end. The waveform fills in from the right and
-		// scrolls left as it plays.
+		// Right-pinned playhead: offset == containerWidth is the start, containerWidth - totalW the end.
 		const position = Math.max(0, Math.min(1, (opts.containerWidth() - next) / totalW));
 		const audio = opts.player.audio;
 		if (audio && isFinite(audio.duration)) audio.currentTime = position * audio.duration;
@@ -189,8 +185,7 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 					stopScratch();
 					momentumRaf = null;
 					isMomentumActive = false;
-					// Delay the resume so the final scratch slice releases
-					// before the media element starts — prevents a crackle.
+					// Delay resume so the final scratch slice releases before the media element starts (no crackle).
 					if (wasPlaying) setTimeout(() => void opts.player.play(), 10);
 					return;
 				}

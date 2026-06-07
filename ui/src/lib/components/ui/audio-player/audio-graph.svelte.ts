@@ -1,9 +1,4 @@
-/**
- * Lazy shared Web Audio graph for an audio element. Splits context creation
- * from analyser wiring so non-analyser callers (e.g. a scratch synth) can warm
- * the context from a user gesture without forcing a `createMediaElementSource`
- * call — only one is legal per element lifetime.
- */
+/** Context creation is split from analyser wiring so callers can warm the context without the one-per-element-lifetime `createMediaElementSource` call. */
 export class AudioGraph {
 	audioContext = $state<AudioContext | null>(null);
 	analyser = $state<AnalyserNode | null>(null);

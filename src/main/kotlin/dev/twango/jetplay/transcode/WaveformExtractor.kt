@@ -10,12 +10,11 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Decodes an audio file into normalized amplitude bars for the UI waveform.
+ * Decodes an audio file into normalized amplitude bars (`[0, 1]` at a fixed
+ * bars-per-second) for the UI waveform.
  *
- * Computed here with the bundled FFmpeg and pushed to the page — cheaper than
- * the browser fetching and decoding the whole file. The output matches the
- * shape the UI's `sampleWaveform` produces: amplitudes in `[0, 1]` at a fixed
- * bars-per-second.
+ * Done here with bundled FFmpeg rather than in the browser to avoid shipping
+ * and decoding the whole file client-side; output matches the UI's `sampleWaveform`.
  */
 object WaveformExtractor {
 
@@ -26,24 +25,20 @@ object WaveformExtractor {
     private const val GAIN = 3.0
     private const val SHORT_FULL_SCALE = 32768.0
     private const val QUANTIZE = 100.0
+    private const val MONO_DOWNMIX = 1
+    private const val MICROS_PER_SECOND = 1_000_000.0
+    private const val INITIAL_BARS_CAPACITY = 4096
 
-    /**
-     * Returns one normalized amplitude per `1/[barsPerSecond]` of audio, or an
-     * empty list if [file] has no readable audio or exceeds the duration cap.
-     */
+    /** One normalized amplitude per `1/[barsPerSecond]` of audio; empty if [file] has no audio or exceeds the cap. */
     fun extract(file: File, barsPerSecond: Int = DEFAULT_BARS_PER_SECOND): List<Double> {
         val grabber = FFmpegFrameGrabber(file).apply {
-            audioChannels = 1 // request a mono downmix
+            audioChannels = MONO_DOWNMIX
             sampleMode = FrameGrabber.SampleMode.SHORT
         }
         return try {
             grabber.start()
-            // No explicit no-audio guard: grabSamples() yields nothing for a
-            // file without an audio stream, so sampleToBars returns empty.
-            // Fast path: skip when the container reports a length over the cap.
-            // (lengthInTime is 0 / AV_NOPTS_VALUE for some inputs, so this is a
-            // best-effort skip; sampleToBars enforces the real ceiling.)
-            val durationSeconds = grabber.lengthInTime / 1_000_000.0
+            // Fast pre-skip: lengthInTime is unreliable (0/AV_NOPTS_VALUE), so sampleToBars enforces the real cap.
+            val durationSeconds = grabber.lengthInTime / MICROS_PER_SECOND
             if (durationSeconds > MAX_DURATION_SECONDS) {
                 log.info("Skipping waveform for ${file.name}: ${durationSeconds.roundToInt()}s exceeds cap")
                 return emptyList()
@@ -60,10 +55,9 @@ object WaveformExtractor {
 
     private fun sampleToBars(grabber: FFmpegFrameGrabber, barsPerSecond: Int): List<Double> {
         val samplesPerBar = (grabber.sampleRate / barsPerSecond).coerceAtLeast(1)
-        // Hard ceiling on output: bounds the decode even when the container
-        // duration is unknown/misreported, and lets dispose() interrupt us.
+        // Hard ceiling that bounds the decode even when container duration is unknown/misreported.
         val maxBars = MAX_DURATION_SECONDS * barsPerSecond
-        val bars = ArrayList<Double>(minOf(maxBars, 4096))
+        val bars = ArrayList<Double>(minOf(maxBars, INITIAL_BARS_CAPACITY))
         var sum = 0.0
         var count = 0
         while (bars.size < maxBars && !Thread.currentThread().isInterrupted) {

@@ -10,11 +10,7 @@ import org.bytedeco.javacv.FrameGrabber
 import java.io.File
 import java.util.Base64
 
-/**
- * Technical metadata for the "codec inspector" expandable header in the player.
- * All fields are nullable so the UI can simply skip anything FFmpeg couldn't
- * determine rather than render a wrong or placeholder value.
- */
+/** Codec-inspector metadata; nullable fields let the UI skip anything FFmpeg couldn't determine. */
 data class MediaInfo(
     val codec: String?,
     val container: String?,
@@ -42,29 +38,18 @@ data class MediaInfo(
 /** One embedded metadata tag, already labeled for display. */
 data class MediaTag(val label: String, val value: String)
 
-/**
- * Probes a media file's container/codec/stream details with the bundled FFmpeg
- * (both audio and video streams).
- *
- * Only reads the header — no frame decoding — so it's cheap. Returns null when
- * the file has no readable audio or video stream, mirroring the graceful-empty
- * contract of [WaveformExtractor]; the UI then just shows the filename as before.
- */
+/** Probes audio/video stream details via header-only FFmpeg reads; null when no readable stream exists. */
 object MediaInfoExtractor {
 
     private val log = Logger.getInstance(MediaInfoExtractor::class.java)
 
-    // Codecs where a source bit depth is a real, honest property to surface.
-    // Lossy codecs decode to float internally, so their "bit depth" would be
-    // misleading — we omit it for those.
+    // Lossy codecs decode to float internally, so their "bit depth" would be misleading; only these report it.
     private val LOSSLESS = setOf("flac", "alac", "wavpack", "truehd", "mlp", "tta", "als")
 
-    // Cover art over this is skipped — it would only bloat the bridge payload,
-    // and a blurred background needs no fidelity. Typical embedded art is < 1 MB.
+    // Larger cover art only bloats the bridge payload; a blurred background needs no fidelity (typical art < 1 MB).
     private const val MAX_ART_BYTES = 4_000_000
 
-    // Embedded tags to surface, in display order, mapped from FFmpeg's
-    // normalized (lowercase) metadata keys to a human label.
+    // Lowercase FFmpeg metadata keys mapped to display labels, in display order.
     private val TAG_FIELDS = listOf(
         "title" to "Title",
         "artist" to "Artist",
@@ -85,7 +70,6 @@ object MediaInfoExtractor {
     private const val CHANNELS_5_1 = 6
     private const val CHANNELS_7_1 = 8
 
-    // Image-signature sniffing for embedded cover art.
     private const val IMAGE_SNIFF_MIN_BYTES = 12
     private const val WEBP_BRAND_OFFSET = 8
     private val SIG_JPEG = intArrayOf(0xFF, 0xD8, 0xFF)
@@ -96,8 +80,7 @@ object MediaInfoExtractor {
 
     /** Returns the file's stream metadata, or null if it has no readable streams. */
     fun extract(file: File): MediaInfo? {
-        // RAW modes so the *source* sample/pixel formats are reported; the SHORT/
-        // COLOR defaults would report the decoder's output format instead.
+        // RAW reports the source sample/pixel formats; SHORT/COLOR would report the decoder's output instead.
         val grabber = FFmpegFrameGrabber(file).apply {
             sampleMode = FrameGrabber.SampleMode.RAW
             imageMode = FrameGrabber.ImageMode.RAW
@@ -117,8 +100,7 @@ object MediaInfoExtractor {
             // Audio (canonical codec from the id, not the decoder name).
             val audioCodec = if (hasAudio) canonicalCodec(grabber.audioCodec) else null
             val audioBitrate = if (hasAudio) grabber.audioBitrate.toLong().takeIf { it > 0 } else null
-            // The size/duration fallback is the whole-file bitrate, so it only
-            // stands in for the audio bitrate when there is no video stream.
+            // The size/duration fallback is whole-file bitrate, valid for audio only when there is no video.
             val bitrate = audioBitrate ?: if (!hasVideo) computeBitrate(sizeBytes, durationMs) else null
 
             // Video.
@@ -159,8 +141,7 @@ object MediaInfoExtractor {
         }
     }
 
-    // Canonical codec name from the codec id (e.g. "mp3", "h264"), not the
-    // decoder name getAudioCodecName()/getVideoCodecName() returns ("mp3float").
+    // Codec name from the id ("mp3", "h264"), not the decoder name ("mp3float") the *CodecName getters return.
     private fun canonicalCodec(codecId: Int): String? =
         avcodec.avcodec_get_name(codecId)?.getString()?.takeIf { it.isNotBlank() && it != "unknown" && it != "none" }
 
@@ -183,8 +164,7 @@ object MediaInfoExtractor {
     private fun bitDepth(codec: String?, sampleFormat: Int): String? = when {
         codec == null -> null
 
-        // PCM encodes its depth in the codec name (e.g. pcm_s24le → 24-bit).
-        // More accurate than the sample format, which widens pcm_s24le to S32.
+        // PCM names carry exact depth (pcm_s24le → 24-bit); the sample format would widen it to S32.
         codec.startsWith("pcm_") -> PCM_PATTERN.find(codec)?.let { match ->
             val bits = match.groupValues[2]
             if (match.groupValues[1] == "f") "$bits-bit float" else "$bits-bit"
@@ -212,11 +192,7 @@ object MediaInfoExtractor {
         }
     }
 
-    /**
-     * Reads the first attached-picture stream's raw image bytes (the packet data
-     * IS the encoded cover) and returns it as a `data:` URL for the UI to blur
-     * behind the player. No decode/re-encode — just sniff the type and base64.
-     */
+    /** First attached-picture stream's raw bytes as a `data:` URL — sniff the type and base64, no decode/re-encode. */
     private fun extractAlbumArt(grabber: FFmpegFrameGrabber): String? {
         return try {
             val oc = grabber.formatContext ?: return null
@@ -227,7 +203,6 @@ object MediaInfoExtractor {
         }
     }
 
-    /** Returns the cover-art `data:` URL from an attached-picture stream, or null. */
     private fun albumArtFromStream(stream: AVStream): String? {
         if (stream.disposition() and avformat.AV_DISPOSITION_ATTACHED_PIC == 0) return null
         val pkt = stream.attached_pic()
