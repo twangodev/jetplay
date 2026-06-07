@@ -25,14 +25,18 @@ import dev.twango.jetplay.transcode.MediaInfoExtractor
 import dev.twango.jetplay.transcode.MediaTranscoder
 import dev.twango.jetplay.transcode.TranscodeSession
 import dev.twango.jetplay.transcode.WaveformExtractor
-import java.util.concurrent.Future
 import dev.twango.jetplay.transfer.DownloadSession
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.Future
 import javax.swing.JComponent
 import javax.swing.JPanel
 
+// FileEditor mandates ~10 overrides; with the media-loading helpers this trips
+// detekt's per-class function cap. Splitting them out would scatter tightly
+// coupled editor logic for no readability gain.
+@Suppress("TooManyFunctions")
 class MediaFileEditor(private val project: Project, private val file: VirtualFile, private val source: MediaSource) :
     UserDataHolderBase(),
     FileEditor {

@@ -99,8 +99,7 @@ class MediaServerTest {
         }
     }
 
-    private fun open(url: String): HttpURLConnection =
-        (URI(url).toURL().openConnection() as HttpURLConnection)
+    private fun open(url: String): HttpURLConnection = (URI(url).toURL().openConnection() as HttpURLConnection)
 
     private fun withTempFile(bytes: ByteArray, suffix: String, block: (File) -> Unit) {
         val file = Files.createTempFile("jetplay-server-test", suffix).toFile().apply { writeBytes(bytes) }

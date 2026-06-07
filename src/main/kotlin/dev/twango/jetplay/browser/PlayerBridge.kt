@@ -50,11 +50,10 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     // Stash the bars as well as calling the handler: extraction can finish
     // before the page defines window.jetplayWaveform (short files), so the app
     // reads window.__jetplayWaveform on mount to avoid dropping an early push.
-    fun sendWaveform(bars: List<Double>) =
-        executeJs(
-            "window.__jetplayWaveform=[${bars.joinToString(",")}];" +
-                "if(window.jetplayWaveform)window.jetplayWaveform(window.__jetplayWaveform)",
-        )
+    fun sendWaveform(bars: List<Double>) = executeJs(
+        "window.__jetplayWaveform=[${bars.joinToString(",")}];" +
+            "if(window.jetplayWaveform)window.jetplayWaveform(window.__jetplayWaveform)",
+    )
 
     // Same stash-then-call pattern as sendWaveform: the probe can finish before
     // the page defines window.jetplayMediaInfo, so the app reads
@@ -73,6 +72,9 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     }
 
     companion object {
+        private const val HEX_RADIX = 16
+        private const val UNICODE_ESCAPE_HEX_LENGTH = 4
+
         fun escapeJs(s: String): String = s.replace("\\", "\\\\")
             .replace("'", "\\'")
             .replace("\"", "\\\"")
@@ -119,16 +121,29 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             for (c in s) {
                 when (c) {
                     '"' -> sb.append("\\\"")
+
                     '\\' -> sb.append("\\\\")
+
                     '\n' -> sb.append("\\n")
+
                     '\r' -> sb.append("\\r")
+
                     '\t' -> sb.append("\\t")
+
                     '\b' -> sb.append("\\b")
+
                     '\u000C' -> sb.append("\\f")
+
                     // Valid in JSON but terminate a JS string literal — must escape.
                     '\u2028' -> sb.append("\\u2028")
+
                     '\u2029' -> sb.append("\\u2029")
-                    else -> if (c < ' ') sb.append("\\u").append(c.code.toString(16).padStart(4, '0')) else sb.append(c)
+
+                    else -> if (c < ' ') {
+                        sb.append("\\u").append(c.code.toString(HEX_RADIX).padStart(UNICODE_ESCAPE_HEX_LENGTH, '0'))
+                    } else {
+                        sb.append(c)
+                    }
                 }
             }
             sb.append('"')

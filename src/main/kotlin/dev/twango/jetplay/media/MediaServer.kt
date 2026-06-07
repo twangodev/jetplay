@@ -28,6 +28,14 @@ object MediaServer {
     private val files = ConcurrentHashMap<String, File>()
     private const val CHUNK = 64 * 1024
 
+    // HTTP status codes, named to document intent and satisfy detekt's MagicNumber.
+    private const val HTTP_OK = 200
+    private const val HTTP_NO_CONTENT = 204
+    private const val HTTP_PARTIAL_CONTENT = 206
+    private const val HTTP_FORBIDDEN = 403
+    private const val HTTP_NOT_FOUND = 404
+    private const val HTTP_RANGE_NOT_SATISFIABLE = 416
+
     @Volatile
     private var server: HttpServer? = null
 
@@ -70,32 +78,33 @@ object MediaServer {
                 headers.add("Access-Control-Allow-Headers", "Range")
                 // Only the preflight needs Chrome's Private Network Access opt-in.
                 headers.add("Access-Control-Allow-Private-Network", "true")
-                exchange.sendResponseHeaders(204, -1)
+                exchange.sendResponseHeaders(HTTP_NO_CONTENT, -1)
                 return
             }
 
             // Reject non-loopback Host headers to neutralize DNS rebinding.
             if (!isLoopbackHost(exchange.requestHeaders.getFirst("Host"))) {
-                exchange.sendResponseHeaders(403, -1)
+                exchange.sendResponseHeaders(HTTP_FORBIDDEN, -1)
                 return
             }
 
             val file = files[exchange.requestURI.path.trimStart('/')]
             if (file == null || !file.isFile) {
-                exchange.sendResponseHeaders(404, -1)
+                exchange.sendResponseHeaders(HTTP_NOT_FOUND, -1)
                 return
             }
 
             headers.add("Content-Type", contentType(file))
             headers.add("Accept-Ranges", "bytes")
             val length = file.length()
-            val range = exchange.requestHeaders.getFirst("Range")
             // Only a single-range "bytes=" request gets partial content; multi-range,
             // garbage, and empty files fall back to a full 200.
-            if (range != null && range.startsWith("bytes=") && !range.contains(',') && length > 0) {
-                writeRange(exchange, file, length, range)
+            val rangeHeader = exchange.requestHeaders.getFirst("Range")
+                ?.takeIf { it.startsWith("bytes=") && !it.contains(',') }
+            if (rangeHeader != null && length > 0) {
+                writeRange(exchange, file, length, rangeHeader)
             } else {
-                exchange.sendResponseHeaders(200, if (length == 0L) -1 else length)
+                exchange.sendResponseHeaders(HTTP_OK, if (length == 0L) -1 else length)
                 file.inputStream().use { it.copyTo(exchange.responseBody) }
             }
         } catch (e: Exception) {
@@ -107,8 +116,11 @@ object MediaServer {
 
     private fun isLoopbackHost(host: String?): Boolean {
         if (host.isNullOrBlank()) return false
-        val name = if (host.startsWith("[")) host.substringAfter("[").substringBefore("]") // [::1]:port
-        else host.substringBefore(":") // 127.0.0.1:port / localhost:port
+        val name = if (host.startsWith("[")) {
+            host.substringAfter("[").substringBefore("]") // [::1]:port
+        } else {
+            host.substringBefore(":") // 127.0.0.1:port / localhost:port
+        }
         return name.equals("127.0.0.1", true) || name.equals("localhost", true) || name.equals("::1", true)
     }
 
@@ -134,7 +146,7 @@ object MediaServer {
 
         val count = end - start + 1
         exchange.responseHeaders.add("Content-Range", "bytes $start-$end/$length")
-        exchange.sendResponseHeaders(206, count)
+        exchange.sendResponseHeaders(HTTP_PARTIAL_CONTENT, count)
         RandomAccessFile(file, "r").use { raf ->
             raf.seek(start)
             val buffer = ByteArray(CHUNK)
@@ -150,21 +162,20 @@ object MediaServer {
 
     private fun send416(exchange: HttpExchange, length: Long) {
         exchange.responseHeaders.add("Content-Range", "bytes */$length")
-        exchange.sendResponseHeaders(416, -1)
+        exchange.sendResponseHeaders(HTTP_RANGE_NOT_SATISFIABLE, -1)
     }
 
-    private fun contentType(file: File): String =
-        runCatching { Files.probeContentType(file.toPath()) }.getOrNull()
-            ?: when (file.extension.lowercase()) {
-                "mp3" -> "audio/mpeg"
-                "ogg", "oga" -> "audio/ogg"
-                "opus" -> "audio/opus"
-                "wav" -> "audio/wav"
-                "flac" -> "audio/flac"
-                "m4a", "aac" -> "audio/mp4"
-                "webm" -> "video/webm"
-                "mp4", "m4v" -> "video/mp4"
-                "ogv" -> "video/ogg"
-                else -> "application/octet-stream"
-            }
+    private fun contentType(file: File): String = runCatching { Files.probeContentType(file.toPath()) }.getOrNull()
+        ?: when (file.extension.lowercase()) {
+            "mp3" -> "audio/mpeg"
+            "ogg", "oga" -> "audio/ogg"
+            "opus" -> "audio/opus"
+            "wav" -> "audio/wav"
+            "flac" -> "audio/flac"
+            "m4a", "aac" -> "audio/mp4"
+            "webm" -> "video/webm"
+            "mp4", "m4v" -> "video/mp4"
+            "ogv" -> "video/ogg"
+            else -> "application/octet-stream"
+        }
 }

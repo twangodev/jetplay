@@ -66,17 +66,18 @@ object WaveformExtractor {
         val bars = ArrayList<Double>(minOf(maxBars, 4096))
         var sum = 0.0
         var count = 0
-        loop@ while (bars.size < maxBars && !Thread.currentThread().isInterrupted) {
+        while (bars.size < maxBars && !Thread.currentThread().isInterrupted) {
             val frame = grabber.grabSamples() ?: break
-            val buffer = frame.samples?.firstOrNull() as? ShortBuffer ?: continue
-            while (buffer.hasRemaining()) {
-                sum += abs(buffer.get().toInt()) / SHORT_FULL_SCALE
-                count++
-                if (count == samplesPerBar) {
-                    bars.add(normalize(sum / count))
-                    sum = 0.0
-                    count = 0
-                    if (bars.size >= maxBars) break@loop
+            val buffer = frame.samples?.firstOrNull() as? ShortBuffer
+            if (buffer != null) {
+                while (buffer.hasRemaining() && bars.size < maxBars) {
+                    sum += abs(buffer.get().toInt()) / SHORT_FULL_SCALE
+                    count++
+                    if (count == samplesPerBar) {
+                        bars.add(normalize(sum / count))
+                        sum = 0.0
+                        count = 0
+                    }
                 }
             }
         }

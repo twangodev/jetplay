@@ -45,11 +45,19 @@ class WaveformExtractorTest {
         val sampleCount = (durationSec * sampleRate).toInt()
         val dataBytes = sampleCount * 2 // s16 mono
         val buf = ByteBuffer.allocate(44 + dataBytes).order(ByteOrder.LITTLE_ENDIAN)
-        buf.put("RIFF".toByteArray()); buf.putInt(36 + dataBytes); buf.put("WAVE".toByteArray())
-        buf.put("fmt ".toByteArray()); buf.putInt(16); buf.putShort(1) // PCM
+        buf.put("RIFF".toByteArray())
+        buf.putInt(36 + dataBytes)
+        buf.put("WAVE".toByteArray())
+        buf.put("fmt ".toByteArray())
+        buf.putInt(16)
+        buf.putShort(1) // PCM
         buf.putShort(1) // mono
-        buf.putInt(sampleRate); buf.putInt(sampleRate * 2); buf.putShort(2); buf.putShort(16)
-        buf.put("data".toByteArray()); buf.putInt(dataBytes)
+        buf.putInt(sampleRate)
+        buf.putInt(sampleRate * 2)
+        buf.putShort(2)
+        buf.putShort(16)
+        buf.put("data".toByteArray())
+        buf.putInt(dataBytes)
         for (i in 0 until sampleCount) {
             buf.putShort((sin(2 * PI * freq * i / sampleRate) * 30000).toInt().toShort())
         }

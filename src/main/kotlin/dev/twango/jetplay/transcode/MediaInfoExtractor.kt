@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import org.bytedeco.ffmpeg.avformat.AVStream
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.ffmpeg.global.avformat
 import org.bytedeco.ffmpeg.global.avutil
@@ -79,6 +80,20 @@ object MediaInfoExtractor {
         "rating" to "Rating",
     )
 
+    private const val BITS_PER_BYTE = 8
+    private const val MILLIS_PER_SECOND = 1000
+    private const val CHANNELS_5_1 = 6
+    private const val CHANNELS_7_1 = 8
+
+    // Image-signature sniffing for embedded cover art.
+    private const val IMAGE_SNIFF_MIN_BYTES = 12
+    private const val WEBP_BRAND_OFFSET = 8
+    private val SIG_JPEG = intArrayOf(0xFF, 0xD8, 0xFF)
+    private val SIG_PNG = intArrayOf(0x89, 0x50, 0x4E, 0x47)
+    private val SIG_GIF = intArrayOf(0x47, 0x49, 0x46)
+    private val SIG_RIFF = intArrayOf(0x52, 0x49, 0x46, 0x46)
+    private val SIG_WEBP = intArrayOf(0x57, 0x45, 0x42, 0x50)
+
     /** Returns the file's stream metadata, or null if it has no readable streams. */
     fun extract(file: File): MediaInfo? {
         // RAW modes so the *source* sample/pixel formats are reported; the SHORT/
@@ -111,7 +126,9 @@ object MediaInfoExtractor {
             val frameRate = if (hasVideo) grabber.videoFrameRate.takeIf { it.isFinite() && it > 0 } else null
             val pixelFormat = if (hasVideo) {
                 avutil.av_get_pix_fmt_name(grabber.pixelFormat)?.getString()?.takeIf { it.isNotBlank() }
-            } else null
+            } else {
+                null
+            }
             val videoBitrate = if (hasVideo) grabber.videoBitrate.toLong().takeIf { it > 0 } else null
 
             MediaInfo(
@@ -149,40 +166,40 @@ object MediaInfoExtractor {
 
     private fun computeBitrate(sizeBytes: Long?, durationMs: Long?): Long? {
         if (sizeBytes == null || durationMs == null || durationMs <= 0) return null
-        return sizeBytes * 8 * 1000 / durationMs
+        return sizeBytes * BITS_PER_BYTE * MILLIS_PER_SECOND / durationMs
     }
 
     private fun channelLabel(channels: Int): String? = when {
         channels <= 0 -> null
         channels == 1 -> "mono"
         channels == 2 -> "stereo"
-        channels == 6 -> "5.1"
-        channels == 8 -> "7.1"
+        channels == CHANNELS_5_1 -> "5.1"
+        channels == CHANNELS_7_1 -> "7.1"
         else -> "$channels ch"
     }
 
     private val PCM_PATTERN = Regex("""^pcm_([fsu])(\d+)""")
 
-    private fun bitDepth(codec: String?, sampleFormat: Int): String? {
-        if (codec == null) return null
+    private fun bitDepth(codec: String?, sampleFormat: Int): String? = when {
+        codec == null -> null
+
         // PCM encodes its depth in the codec name (e.g. pcm_s24le → 24-bit).
         // More accurate than the sample format, which widens pcm_s24le to S32.
-        if (codec.startsWith("pcm_")) {
-            val match = PCM_PATTERN.find(codec) ?: return null
+        codec.startsWith("pcm_") -> PCM_PATTERN.find(codec)?.let { match ->
             val bits = match.groupValues[2]
-            return if (match.groupValues[1] == "f") "$bits-bit float" else "$bits-bit"
+            if (match.groupValues[1] == "f") "$bits-bit float" else "$bits-bit"
         }
-        if (codec in LOSSLESS) {
-            return when (sampleFormat) {
-                avutil.AV_SAMPLE_FMT_U8, avutil.AV_SAMPLE_FMT_U8P -> "8-bit"
-                avutil.AV_SAMPLE_FMT_S16, avutil.AV_SAMPLE_FMT_S16P -> "16-bit"
-                avutil.AV_SAMPLE_FMT_S32, avutil.AV_SAMPLE_FMT_S32P -> "32-bit"
-                avutil.AV_SAMPLE_FMT_FLT, avutil.AV_SAMPLE_FMT_FLTP -> "32-bit float"
-                avutil.AV_SAMPLE_FMT_DBL, avutil.AV_SAMPLE_FMT_DBLP -> "64-bit float"
-                else -> null
-            }
+
+        codec in LOSSLESS -> when (sampleFormat) {
+            avutil.AV_SAMPLE_FMT_U8, avutil.AV_SAMPLE_FMT_U8P -> "8-bit"
+            avutil.AV_SAMPLE_FMT_S16, avutil.AV_SAMPLE_FMT_S16P -> "16-bit"
+            avutil.AV_SAMPLE_FMT_S32, avutil.AV_SAMPLE_FMT_S32P -> "32-bit"
+            avutil.AV_SAMPLE_FMT_FLT, avutil.AV_SAMPLE_FMT_FLTP -> "32-bit float"
+            avutil.AV_SAMPLE_FMT_DBL, avutil.AV_SAMPLE_FMT_DBLP -> "64-bit float"
+            else -> null
         }
-        return null
+
+        else -> null
     }
 
     /** Maps FFmpeg's metadata map to an ordered, labeled list of display tags. */
@@ -203,33 +220,33 @@ object MediaInfoExtractor {
     private fun extractAlbumArt(grabber: FFmpegFrameGrabber): String? {
         return try {
             val oc = grabber.formatContext ?: return null
-            for (i in 0 until oc.nb_streams()) {
-                val stream = oc.streams(i)
-                if (stream.disposition() and avformat.AV_DISPOSITION_ATTACHED_PIC == 0) continue
-                val pkt = stream.attached_pic()
-                val size = pkt.size()
-                if (size <= 0 || size > MAX_ART_BYTES) continue
-                val data = pkt.data() ?: continue
-                val bytes = ByteArray(size)
-                data.capacity(size.toLong()).get(bytes)
-                val mime = sniffImageMime(bytes) ?: continue
-                return "data:$mime;base64,${Base64.getEncoder().encodeToString(bytes)}"
-            }
-            null
+            (0 until oc.nb_streams()).firstNotNullOfOrNull { albumArtFromStream(oc.streams(it)) }
         } catch (e: Exception) {
             log.warn("Album art extraction failed", e)
             null
         }
     }
 
+    /** Returns the cover-art `data:` URL from an attached-picture stream, or null. */
+    private fun albumArtFromStream(stream: AVStream): String? {
+        if (stream.disposition() and avformat.AV_DISPOSITION_ATTACHED_PIC == 0) return null
+        val pkt = stream.attached_pic()
+        val size = pkt.size()
+        val data = pkt.data()
+        if (size <= 0 || size > MAX_ART_BYTES || data == null) return null
+        val bytes = ByteArray(size)
+        data.capacity(size.toLong()).get(bytes)
+        return sniffImageMime(bytes)?.let { "data:$it;base64,${Base64.getEncoder().encodeToString(bytes)}" }
+    }
+
     private fun sniffImageMime(b: ByteArray): String? {
-        if (b.size < 12) return null
-        fun at(i: Int, vararg bytes: Int) = bytes.withIndex().all { (k, v) -> b[i + k] == v.toByte() }
+        if (b.size < IMAGE_SNIFF_MIN_BYTES) return null
+        fun at(offset: Int, sig: IntArray) = sig.withIndex().all { (k, v) -> b[offset + k] == v.toByte() }
         return when {
-            at(0, 0xFF, 0xD8, 0xFF) -> "image/jpeg"
-            at(0, 0x89, 0x50, 0x4E, 0x47) -> "image/png"
-            at(0, 0x47, 0x49, 0x46) -> "image/gif" // GIF
-            at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50) -> "image/webp" // RIFF…WEBP
+            at(0, SIG_JPEG) -> "image/jpeg"
+            at(0, SIG_PNG) -> "image/png"
+            at(0, SIG_GIF) -> "image/gif"
+            at(0, SIG_RIFF) && at(WEBP_BRAND_OFFSET, SIG_WEBP) -> "image/webp"
             else -> null
         }
     }
