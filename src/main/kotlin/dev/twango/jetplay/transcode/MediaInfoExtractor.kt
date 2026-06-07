@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.ffmpeg.global.avformat
 import org.bytedeco.ffmpeg.global.avutil
 import org.bytedeco.javacv.FFmpegFrameGrabber
@@ -80,7 +81,11 @@ object MediaInfoExtractor {
             val channels = grabber.audioChannels
             if (channels <= 0) return null // no audio stream
 
-            val codec = grabber.audioCodecName?.takeIf { it.isNotBlank() }
+            // Use the canonical codec name from the codec id, not getAudioCodecName()
+            // — the latter returns the *decoder* name (e.g. "mp3float" for MP3).
+            val codec = avcodec.avcodec_get_name(grabber.audioCodec)
+                ?.getString()
+                ?.takeIf { it.isNotBlank() && it != "unknown" }
             val durationMs = grabber.lengthInTime.takeIf { it > 0 }?.div(1000)
             val sizeBytes = file.length().takeIf { it > 0 }
             val bitrate = grabber.audioBitrate.toLong().takeIf { it > 0 } ?: computeBitrate(sizeBytes, durationMs)
