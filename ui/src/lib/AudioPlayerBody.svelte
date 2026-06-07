@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte'
   import { slide } from 'svelte/transition'
   import { Slider as SliderPrimitive } from 'bits-ui'
-  import { SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
+  import { ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
   import {
     AudioGraph,
     AudioPlayerButton,
@@ -17,6 +17,7 @@
   import { Waveform } from '$lib/components/ui/waveform/index.js'
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
+  import { formatTime } from './formatTime'
   import { useScratchableWaveform } from './use-scratchable-waveform.svelte.js'
 
   let {
@@ -24,7 +25,14 @@
     fileName,
     extension,
     waveform = [],
-  }: { src: string; fileName: string; extension: string; waveform?: number[] } = $props()
+    mediaInfo,
+  }: {
+    src: string
+    fileName: string
+    extension: string
+    waveform?: number[]
+    mediaInfo?: MediaInfo
+  } = $props()
 
   const player = useAudioPlayer<{ name: string }>()
   // Owns the scratch AudioContext used by the scrubbing interaction.
@@ -52,6 +60,64 @@
   const VolumeIcon = $derived(
     muted || volume === 0 ? VolumeX : volume <= 0.33 ? Volume : volume <= 0.66 ? Volume1 : Volume2,
   )
+
+  // --- Codec inspector: the metadata header expands into a technical readout ---
+  // when the IDE has pushed `mediaInfo` (FFmpeg-probed). Collapsed shows a
+  // glanceable summary line; expanded shows the full label/value grid.
+  let infoExpanded = $state(false)
+
+  function formatSampleRate(hz: number): string {
+    // Keep enough precision for the conventional rates (44.1, 22.05, 11.025)
+    // while trimming trailing zeros (48000 → "48", 44100 → "44.1").
+    const k = Number((hz / 1000).toFixed(3))
+    return `${k} kHz`
+  }
+  function formatBitrate(bps: number): string {
+    // kbps is the conventional unit for audio at every magnitude (lossless can
+    // run several thousand kbps), so we don't switch to Mbps.
+    return `${Math.round(bps / 1000)} kbps`
+  }
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`
+    const kb = bytes / 1024
+    if (kb < 1024) return `${kb.toFixed(kb < 10 ? 1 : 0)} KB`
+    const mb = kb / 1024
+    if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`
+    return `${(mb / 1024).toFixed(1)} GB`
+  }
+
+  type InfoRow = { label: string; value: string }
+  const infoRows = $derived.by<InfoRow[]>(() => {
+    const m = mediaInfo
+    if (!m) return []
+    const rows: InfoRow[] = []
+    if (m.codec) rows.push({ label: 'Codec', value: m.codec })
+    if (m.container) rows.push({ label: 'Container', value: m.container.toUpperCase() })
+    if (m.sampleRateHz) rows.push({ label: 'Sample rate', value: formatSampleRate(m.sampleRateHz) })
+    if (m.channels)
+      rows.push({ label: 'Channels', value: m.channelLabel ? `${m.channels} (${m.channelLabel})` : String(m.channels) })
+    if (m.bitDepth) rows.push({ label: 'Bit depth', value: m.bitDepth })
+    if (m.bitrateBps) rows.push({ label: 'Bitrate', value: formatBitrate(m.bitrateBps) })
+    if (m.durationMs) rows.push({ label: 'Duration', value: formatTime(m.durationMs / 1000) })
+    if (m.sizeBytes) rows.push({ label: 'Size', value: formatBytes(m.sizeBytes) })
+    return rows
+  })
+
+  const summaryLine = $derived.by(() => {
+    const m = mediaInfo
+    if (!m) return ''
+    const parts: string[] = []
+    if (m.container) parts.push(m.container.toUpperCase())
+    if (m.sampleRateHz) parts.push(formatSampleRate(m.sampleRateHz))
+    if (m.bitDepth) parts.push(m.bitDepth)
+    if (m.channelLabel) parts.push(m.channelLabel)
+    if (m.sizeBytes) parts.push(formatBytes(m.sizeBytes))
+    return parts.join(' · ')
+  })
+
+  // Only treat info as present when there's at least one row to show, so an
+  // empty/degenerate push never renders a chevron with nothing behind it.
+  const hasMediaInfo = $derived(infoRows.length > 0)
 
   // sv11 colors the bars a muted gray rather than full --foreground. jetplay
   // tracks the IDE theme via prefers-color-scheme (dark unless prefers-light).
@@ -177,11 +243,16 @@
     if (a && isFinite(a.duration)) a.currentTime = Math.min(a.duration, a.currentTime + 10)
   }
   function handleKeydown(e: KeyboardEvent) {
+    // Only the player container itself drives these shortcuts. When an inner
+    // control (the media-details toggle, mute, the volume slider) is focused,
+    // let it receive the key natively — e.g. Space must activate the toggle,
+    // not get swallowed here into a play/pause.
+    if (e.target !== containerEl) return
     if (e.code === 'Space') {
       e.preventDefault()
       if (player.audio?.paused) void player.play()
       else void player.pause()
-    } else if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && e.target === containerEl) {
+    } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
       e.preventDefault()
       if (e.code === 'ArrowLeft') skipBack()
       else skipForward()
@@ -197,13 +268,62 @@
   tabindex="-1"
 >
   <div class="relative w-full max-w-md space-y-4 rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
-    <!-- Metadata -->
-    <div class="flex items-center gap-2">
-      <span class="truncate text-sm font-medium text-foreground">{fileName}</span>
-      {#if extension}
-        <span class="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
-          {extension}
-        </span>
+    <!-- Metadata header — expands into the codec inspector when info is available -->
+    <div class="space-y-1.5">
+      {#snippet nameAndBadge()}
+        <span class="truncate text-sm font-medium text-foreground">{fileName}</span>
+        {#if extension}
+          <span class="shrink-0 rounded-sm border border-border px-1.5 py-0.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            {extension}
+          </span>
+        {/if}
+      {/snippet}
+
+      {#if hasMediaInfo}
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          aria-expanded={infoExpanded}
+          aria-controls="media-info-grid"
+          aria-label="Toggle media details"
+          onclick={() => (infoExpanded = !infoExpanded)}
+        >
+          {@render nameAndBadge()}
+          <ChevronDown
+            class={cn(
+              'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
+              infoExpanded && 'rotate-180',
+            )}
+          />
+        </button>
+      {:else}
+        <div class="flex items-center gap-2">
+          {@render nameAndBadge()}
+        </div>
+      {/if}
+
+      {#if summaryLine}
+        <div
+          data-slot="media-info-summary"
+          transition:slide={{ duration: 300 }}
+          class="truncate text-xs text-muted-foreground tabular-nums"
+        >
+          {summaryLine}
+        </div>
+      {/if}
+
+      {#if hasMediaInfo && infoExpanded}
+        <div
+          id="media-info-grid"
+          data-slot="media-info-grid"
+          transition:slide={{ duration: 250 }}
+          class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-foreground/5 p-3 text-xs"
+        >
+          {#each infoRows as row (row.label)}
+            <span class="text-muted-foreground">{row.label}</span>
+            <span class="text-right font-mono text-foreground">{row.value}</span>
+          {/each}
+        </div>
       {/if}
     </div>
 

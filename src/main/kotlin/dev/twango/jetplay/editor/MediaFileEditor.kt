@@ -21,6 +21,7 @@ import dev.twango.jetplay.media.MediaServer
 import dev.twango.jetplay.media.MediaSource
 import dev.twango.jetplay.media.RemoteFileMediaSource
 import dev.twango.jetplay.transcode.FfmpegAvailability
+import dev.twango.jetplay.transcode.MediaInfoExtractor
 import dev.twango.jetplay.transcode.MediaTranscoder
 import dev.twango.jetplay.transcode.TranscodeSession
 import dev.twango.jetplay.transcode.WaveformExtractor
@@ -42,6 +43,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
     private var downloadSession: DownloadSession? = null
     private var transcodeSession: TranscodeSession? = null
     private var waveformFuture: Future<*>? = null
+    private var mediaInfoFuture: Future<*>? = null
 
     // Loopback URLs handed out for this editor's media, released on dispose.
     private val servedUrls = CopyOnWriteArrayList<String>()
@@ -67,6 +69,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
             playDirectly()
         }
         maybeSendWaveform()
+        maybeSendMediaInfo()
     }
 
     /**
@@ -85,6 +88,23 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
             if (bridge.disposed) return@executeOnPooledThread
             val bars = WaveformExtractor.extract(localFile)
             if (bars.isNotEmpty()) bridge.sendWaveform(bars)
+        }
+    }
+
+    /**
+     * Probe the file's container/codec/stream details with FFmpeg (off the EDT)
+     * and push them to the player's codec inspector. Same guards as the
+     * waveform: local audio only (remote needs its download first; video has no
+     * audio-player UI yet; raw codecs lack the demuxer hints to probe cleanly).
+     */
+    private fun maybeSendMediaInfo() {
+        if (source.isVideo || source.isRemote || !FfmpegAvailability.available) return
+        if (source.extension.lowercase() in MediaTranscoder.rawAudioExtensions) return
+        val localFile = source.toLocalFile()
+        mediaInfoFuture = ApplicationManager.getApplication().executeOnPooledThread {
+            if (bridge.disposed) return@executeOnPooledThread
+            val info = MediaInfoExtractor.extract(localFile)
+            if (info != null) bridge.sendMediaInfo(info)
         }
     }
 
@@ -175,6 +195,7 @@ class MediaFileEditor(private val project: Project, private val file: VirtualFil
         downloadSession?.cancel()
         transcodeSession?.cancel()
         waveformFuture?.cancel(true)
+        mediaInfoFuture?.cancel(true)
         servedUrls.forEach(MediaServer::release)
         bridge.dispose()
     }

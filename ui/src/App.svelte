@@ -15,6 +15,8 @@
   // Prefer a buffered push (the IDE may have called jetplayWaveform before this
   // handler existed, in which case it stashed the bars on window).
   let waveform = $state(window.__jetplayWaveform ?? config.waveform ?? [])
+  // Same buffered-push pattern for the codec inspector metadata.
+  let mediaInfo = $state(window.__jetplayMediaInfo ?? config.mediaInfo)
 
   const fileName = config.fileName ?? 'Unknown'
   const fileExtension = config.fileExtension ?? ''
@@ -51,6 +53,11 @@
   window.jetplayWaveform = (bars: number[]) => {
     waveform = bars
   }
+
+  // FFmpeg-probed technical metadata pushed from the IDE for the codec inspector.
+  window.jetplayMediaInfo = (info: MediaInfo) => {
+    mediaInfo = info
+  }
 </script>
 
 {#if state === 'downloading'}
@@ -62,5 +69,5 @@
 {:else if isVideo}
   <VideoPlayer src={mediaUrl} {fileName} />
 {:else}
-  <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} />
+  <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} {mediaInfo} />
 {/if}

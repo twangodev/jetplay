@@ -59,6 +59,83 @@ test('a waveform buffered before load is picked up', async ({ page }) => {
   await expect(page.locator('[aria-label="Seek playback"]')).toBeVisible()
 })
 
+// The IDE probes the file with FFmpeg and pushes technical metadata; the header
+// stays a plain filename until then, and expands into a full grid on click.
+test('media-info push renders the summary and expands into a grid', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  // No info yet → no toggle, no summary, no grid.
+  await expect(page.locator('[aria-label="Toggle media details"]')).toHaveCount(0)
+  await expect(page.locator('[data-slot="media-info-summary"]')).toHaveCount(0)
+
+  await page.evaluate(() =>
+    window.jetplayMediaInfo?.({
+      codec: 'pcm_s16le',
+      container: 'wav',
+      sampleRateHz: 48000,
+      channels: 2,
+      channelLabel: 'stereo',
+      bitDepth: '16-bit',
+      bitrateBps: 1536000,
+      durationMs: 42318,
+      sizeBytes: 1258291,
+    }),
+  )
+
+  const summary = page.locator('[data-slot="media-info-summary"]')
+  await expect(summary).toBeVisible()
+  await expect(summary).toContainText('WAV')
+  await expect(summary).toContainText('48 kHz')
+  await expect(summary).toContainText('stereo')
+
+  // Grid is collapsed until the header is clicked.
+  await expect(page.locator('[data-slot="media-info-grid"]')).toHaveCount(0)
+  await page.locator('[aria-label="Toggle media details"]').click()
+
+  const grid = page.locator('[data-slot="media-info-grid"]')
+  await expect(grid).toBeVisible()
+  await expect(grid).toContainText('Codec')
+  await expect(grid).toContainText('pcm_s16le')
+  await expect(grid).toContainText('Bitrate')
+  await expect(grid).toContainText('1536 kbps')
+})
+
+// Regression: the player container's Space shortcut must not swallow the
+// toggle button's native activation. Space on the focused toggle expands the
+// inspector and must NOT start playback.
+test('space activates the focused media-details toggle, not playback', async ({ loadApp }) => {
+  const page = await loadApp(audioConfig)
+  await page.evaluate(() =>
+    window.jetplayMediaInfo?.({ codec: 'pcm_s16le', container: 'wav', sampleRateHz: 48000, channels: 2, channelLabel: 'stereo' }),
+  )
+  const toggle = page.locator('[aria-label="Toggle media details"]')
+  await toggle.focus()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+  await page.keyboard.press('Space')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.locator('[data-slot="media-info-grid"]')).toBeVisible()
+  await expect(page.locator('audio')).toHaveJSProperty('paused', true)
+})
+
+// A push that arrived before the page defined the handler is stashed on window
+// and must still be picked up on mount (same guard as the waveform).
+test('media info buffered before load is picked up', async ({ page }) => {
+  await page.addInitScript(() => {
+    ;(window as any).jetplay = {
+      state: 'ready',
+      fileName: 'x.wav',
+      fileExtension: 'wav',
+      mediaUrl: '/assets/does-not-exist.mp3',
+      isVideo: false,
+    }
+    ;(window as any).__jetplayMediaInfo = { container: 'wav', sampleRateHz: 44100, channels: 1, channelLabel: 'mono' }
+  })
+  await page.goto('/')
+  const summary = page.locator('[data-slot="media-info-summary"]')
+  await expect(summary).toBeVisible()
+  await expect(summary).toContainText('44.1 kHz')
+})
+
 test('play button toggles playback', async ({ loadApp }) => {
   const page = await loadApp(audioConfig)
   const playBtn = page.locator('button[aria-label="Play"], button[aria-label="Pause"]')
