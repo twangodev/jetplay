@@ -2,6 +2,22 @@
 
 # jetplay Changelog
 
+## [0.3.0](https://github.com/twangodev/jetplay/compare/v0.2.0...v0.3.0) (2026-06-08)
+
+
+### Added
+
+* **branding:** monochrome edge-lit play-button logo ([8b47d46](https://github.com/twangodev/jetplay/commit/8b47d463c23eb96e65348a9562b526fee3b449f1))
+* nudge users to star the repo or send feedback ([#37](https://github.com/twangodev/jetplay/issues/37)) ([a7f01e0](https://github.com/twangodev/jetplay/commit/a7f01e0827da6e0c8abc479f0ef018823cc16455))
+* support raw telephony codecs and additional container formats ([#31](https://github.com/twangodev/jetplay/issues/31)) ([13d3955](https://github.com/twangodev/jetplay/commit/13d395527a23f8951548d1b560759463b9f8440a))
+* **ui:** use sv11-ui components in the media player ([#34](https://github.com/twangodev/jetplay/issues/34)) ([d1e7af7](https://github.com/twangodev/jetplay/commit/d1e7af7089f07bbbc26161e6b51beecaf98dbfc4))
+
+
+### Changed
+
+* move the video wordmark into a title prefix ([#36](https://github.com/twangodev/jetplay/issues/36)) ([ba6d489](https://github.com/twangodev/jetplay/commit/ba6d489893a3322bcb8666db96f3d72f44046a56))
+* self-document the sv11 player (extract MediaLoader, trim comment-smells) ([#35](https://github.com/twangodev/jetplay/issues/35)) ([e130d29](https://github.com/twangodev/jetplay/commit/e130d29c3f4b79181f27da4623910b89ab3eba13))
+
 ## [0.2.0](https://github.com/twangodev/jetplay/compare/v0.1.1...v0.2.0) (2026-04-03)
 
 
