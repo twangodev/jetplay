@@ -2,6 +2,7 @@
 # libraries
 junit = "4.13.2"
 opentest4j = "1.3.0"
+pluginVerifier = "1.405"
 
 # plugins
 detekt = "2.0.0-alpha.2"
@@ -14,6 +15,7 @@ qodana = "2025.3.2"
 detekt-formatting = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 opentest4j = { group = "org.opentest4j", name = "opentest4j", version.ref = "opentest4j" }
+verifier-cli = { module = "org.jetbrains.intellij.plugins:verifier-cli", version.ref = "pluginVerifier" }
 
 [plugins]
 detekt = { id = "dev.detekt", version.ref = "detekt" }
