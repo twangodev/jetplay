@@ -59,6 +59,7 @@ dependencies {
         plugins(providers.gradleProperty("platformPlugins").map { it.split(',') })
         bundledModules(providers.gradleProperty("platformBundledModules").map { it.split(',') })
         testFramework(TestFrameworkType.Platform)
+        pluginVerifier(libs.versions.pluginVerifier.get())
     }
 }
 
