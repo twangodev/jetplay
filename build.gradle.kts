@@ -1,9 +1,11 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     id("java")
     alias(libs.plugins.kotlin)
     alias(libs.plugins.intelliJPlatform)
+    alias(libs.plugins.changelog)
     alias(libs.plugins.detekt)
     alias(libs.plugins.qodana)
     alias(libs.plugins.kover)
@@ -63,6 +65,11 @@ dependencies {
     }
 }
 
+changelog {
+    groups.empty()
+    repositoryUrl = providers.gradleProperty("pluginRepositoryUrl")
+}
+
 intellijPlatform {
     pluginConfiguration {
         name = providers.gradleProperty("pluginName")
@@ -78,6 +85,15 @@ intellijPlatform {
                 }
                 subList(indexOf(start) + 1, indexOf(end)).joinToString("\n")
             }
+        }
+
+        changeNotes = with(changelog) {
+            renderItem(
+                (getOrNull(providers.gradleProperty("pluginVersion").get()) ?: getLatest())
+                    .withHeader(false)
+                    .withEmptySections(false),
+                Changelog.OutputType.HTML,
+            )
         }
 
         ideaVersion {
