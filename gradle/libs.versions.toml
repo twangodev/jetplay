@@ -8,7 +8,7 @@ pluginVerifier = "1.405"
 changelog = "2.5.0"
 detekt = "2.0.0-alpha.2"
 intelliJPlatform = "2.16.0"
-kotlin = "2.3.20"
+kotlin = "2.3.21"
 kover = "0.9.7"
 qodana = "2025.3.2"
 
