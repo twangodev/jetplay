@@ -13,6 +13,11 @@ object MediaClassification {
         "flv",
         "webm",
         "ogv",
+        "ts",
+        "mts",
+        "m2ts",
+        "3gp",
+        "ivf",
     )
 
     fun isVideo(extension: String): Boolean = extension.lowercase() in VIDEO_EXTENSIONS
