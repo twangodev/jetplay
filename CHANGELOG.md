@@ -2,6 +2,14 @@
 
 # jetplay Changelog
 
+## [0.4.0](https://github.com/twangodev/jetplay/compare/v0.3.0...v0.4.0) (2026-06-12)
+
+
+### Added
+
+* add AC-3, E-AC-3, CAF, IVF, and ADTS playback ([#42](https://github.com/twangodev/jetplay/issues/42)) ([612ffec](https://github.com/twangodev/jetplay/commit/612ffec2afb6cfe47cdf4adbf245a11cdabda57d))
+* **publishing:** render release-please changelog into plugin change notes ([#40](https://github.com/twangodev/jetplay/issues/40)) ([8e5c4ce](https://github.com/twangodev/jetplay/commit/8e5c4ce8d9e8f3f9efdd83ce998d0ed89d329c42))
+
 ## [0.3.0](https://github.com/twangodev/jetplay/compare/v0.2.0...v0.3.0) (2026-06-08)
 
 
