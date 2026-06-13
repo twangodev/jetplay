@@ -1,14 +1,17 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.aware.SplitModeAware
 
 plugins {
     id("java")
-    alias(libs.plugins.kotlin)
-    alias(libs.plugins.intelliJPlatform)
+    id("org.jetbrains.kotlin.jvm")
+    id("org.jetbrains.intellij.platform")
     alias(libs.plugins.changelog)
     alias(libs.plugins.detekt)
     alias(libs.plugins.qodana)
     alias(libs.plugins.kover)
+    id("rpc") apply false
+    id("org.jetbrains.kotlin.plugin.serialization") apply false
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -18,38 +21,24 @@ kotlin {
     jvmToolchain(17)
 }
 
-repositories {
-    mavenCentral()
-    intellijPlatform {
-        defaultRepositories()
+subprojects {
+    apply(plugin = "org.jetbrains.intellij.platform.module")
+    apply(plugin = "rpc")
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
+
+    kotlin {
+        jvmToolchain(17)
+    }
+
+    dependencies {
+        intellijPlatform {
+            intellijIdea(providers.gradleProperty("platformVersion"))
+        }
     }
 }
 
 dependencies {
-    implementation("org.bytedeco:javacv:1.5.13") {
-        exclude(group = "org.bytedeco", module = "opencv")
-        exclude(group = "org.bytedeco", module = "openblas")
-        exclude(group = "org.bytedeco", module = "flycapture")
-        exclude(group = "org.bytedeco", module = "libdc1394")
-        exclude(group = "org.bytedeco", module = "libfreenect")
-        exclude(group = "org.bytedeco", module = "libfreenect2")
-        exclude(group = "org.bytedeco", module = "librealsense")
-        exclude(group = "org.bytedeco", module = "librealsense2")
-        exclude(group = "org.bytedeco", module = "videoinput")
-        exclude(group = "org.bytedeco", module = "artoolkitplus")
-        exclude(group = "org.bytedeco", module = "flandmark")
-        exclude(group = "org.bytedeco", module = "leptonica")
-        exclude(group = "org.bytedeco", module = "tesseract")
-    }
-    implementation("org.bytedeco:ffmpeg:7.1-1.5.13:linux-x86_64")
-    implementation("org.bytedeco:ffmpeg:7.1-1.5.13:macosx-x86_64")
-    implementation("org.bytedeco:ffmpeg:7.1-1.5.13:macosx-arm64")
-    implementation("org.bytedeco:ffmpeg:7.1-1.5.13:windows-x86_64")
-    implementation("org.bytedeco:javacpp:1.5.13:linux-x86_64")
-    implementation("org.bytedeco:javacpp:1.5.13:macosx-x86_64")
-    implementation("org.bytedeco:javacpp:1.5.13:macosx-arm64")
-    implementation("org.bytedeco:javacpp:1.5.13:windows-x86_64")
-
     detektPlugins(libs.detekt.formatting)
 
     testImplementation(libs.junit)
@@ -62,6 +51,10 @@ dependencies {
         bundledModules(providers.gradleProperty("platformBundledModules").map { it.split(',') })
         testFramework(TestFrameworkType.Platform)
         pluginVerifier(libs.versions.pluginVerifier.get())
+
+        pluginModule(implementation(project(":shared")))
+        pluginModule(implementation(project(":frontend")))
+        pluginModule(implementation(project(":backend")))
     }
 }
 
@@ -71,6 +64,9 @@ changelog {
 }
 
 intellijPlatform {
+    splitMode = true
+    pluginInstallationTarget = SplitModeAware.PluginInstallationTarget.BOTH
+
     pluginConfiguration {
         name = providers.gradleProperty("pluginName")
         version = providers.gradleProperty("pluginVersion")
@@ -151,21 +147,7 @@ tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
     }
 }
 
-val buildPlayerUi by tasks.registering(Exec::class) {
-    workingDir = file("ui")
-    commandLine("bash", "-lc", "npm run build")
-    inputs.dir("ui/src")
-    inputs.file("ui/index.html")
-    inputs.file("ui/vite.config.ts")
-    inputs.file("ui/package.json")
-    outputs.file("src/main/resources/player/index.html")
-}
-
 tasks {
-    processResources {
-        dependsOn(buildPlayerUi)
-    }
-
     wrapper {
         gradleVersion = providers.gradleProperty("gradleVersion").get()
     }
