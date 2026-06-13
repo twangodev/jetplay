@@ -1,5 +1,6 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.intellij.platform.gradle.tasks.aware.SplitModeAware
 
 plugins {
@@ -111,6 +112,35 @@ intellijPlatform {
     }
 
     pluginVerification {
+        // Split mode requires @ApiStatus.Internal RPC APIs (RemoteApiProviderService, the remoteApiProvider EP,
+        // ProjectId/VirtualFileId) that have no stable equivalent, so internal/experimental usage can't gate the
+        // build; keep failing on real binary incompatibilities and invalid plugin structure.
+        failureLevel = listOf(
+            VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+        )
+        // javacv (backend, ffmpeg only) bundles optional capture/vision frame-grabbers we exclude from the deps;
+        // mark those packages external so the verifier stops reading javacv's unused references to them as
+        // missing-package compatibility problems.
+        externalPrefixes = listOf(
+            "org.bytedeco.opencv",
+            "org.bytedeco.librealsense",
+            "org.bytedeco.librealsense2",
+            "org.bytedeco.videoinput",
+            "org.bytedeco.flycapture",
+            "org.bytedeco.libdc1394",
+            "org.bytedeco.libfreenect",
+            "org.bytedeco.libfreenect2",
+            "org.bytedeco.artoolkitplus",
+            "org.bytedeco.flandmark",
+            "org.bytedeco.leptonica",
+            "org.bytedeco.tesseract",
+            "org.opencv",
+            "javafx",
+            "com.badlogic",
+            "com.jogamp",
+            "org.apache.maven",
+        )
         ides {
             val pinned = providers.gradleProperty("verifierIde").orNull
             if (pinned.isNullOrBlank()) {
