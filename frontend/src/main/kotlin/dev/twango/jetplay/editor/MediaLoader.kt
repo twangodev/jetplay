@@ -9,6 +9,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.project.projectId
+import com.intellij.util.concurrency.AppExecutorUtil
 import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.JetPlayConstants
 import dev.twango.jetplay.browser.PlayerBridge
@@ -25,6 +26,8 @@ import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Future
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 class MediaLoader(
     private val project: Project,
@@ -38,7 +41,24 @@ class MediaLoader(
     // Loopback URLs handed out for this editor's media, released on dispose.
     private val servedUrls = CopyOnWriteArrayList<String>()
 
+    @Volatile
+    private var watchdog: ScheduledFuture<*>? = null
+
     private fun serve(file: File): String = MediaServer.serve(file).also { servedUrls.add(it) }
+
+    /**
+     * The player has the URL but JCEF may never reach the loopback server (frontend-side CEF in remote
+     * dev). If nothing fetches the token before the deadline, surface an explicit error so the user
+     * sees a diagnosable failure instead of an indefinite spinner.
+     */
+    private fun armLoadWatchdog(url: String) {
+        watchdog?.cancel(false)
+        watchdog = AppExecutorUtil.getAppScheduledExecutorService().schedule({
+            if (bridge.disposed || MediaServer.wasFetched(url)) return@schedule
+            log.warn("Media load watchdog: $url served but never fetched after ${LOAD_TIMEOUT_SECONDS}s")
+            bridge.showError(JetPlayBundle.message("error.load.timeout"))
+        }, LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+    }
 
     private val uiStrings = UiStrings(
         downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
@@ -98,7 +118,9 @@ class MediaLoader(
             if (source.needsTranscoding) {
                 startTranscoding()
             } else {
-                bridge.mediaReady(serve(temp))
+                val url = serve(temp)
+                bridge.mediaReady(url)
+                armLoadWatchdog(url)
             }
         }
     }
@@ -138,7 +160,11 @@ class MediaLoader(
                     }
                 }
             }
-            if (!bridge.disposed) bridge.mediaReady(serve(temp))
+            if (!bridge.disposed) {
+                val url = serve(temp)
+                bridge.mediaReady(url)
+                armLoadWatchdog(url)
+            }
         } catch (_: TranscodeUnavailable) {
             showTranscodingError()
         } catch (e: TranscodeFailure) {
@@ -152,30 +178,34 @@ class MediaLoader(
         val local = source.localFileOrNull()
         if (local != null) {
             // MONOLITH / local file: identical to today — serve the real file, no RPC, no temp copy.
+            val url = serve(local)
             htmlLoader.load(
                 PlayerConfig(
                     isVideo = source.isVideo,
                     fileName = source.fileName,
                     fileExtension = source.extension,
-                    mediaUrl = serve(local),
+                    mediaUrl = url,
                     ui = uiStrings,
                 ),
             )
+            armLoadWatchdog(url)
             return
         }
         // SPLIT MODE: pull bytes from backend into a temp file, then serve.
         submit {
             val temp = streamToTemp { } ?: return@submit
             if (!bridge.disposed) {
+                val url = serve(temp)
                 htmlLoader.load(
                     PlayerConfig(
                         isVideo = source.isVideo,
                         fileName = source.fileName,
                         fileExtension = source.extension,
-                        mediaUrl = serve(temp),
+                        mediaUrl = url,
                         ui = uiStrings,
                     ),
                 )
+                armLoadWatchdog(url)
             }
         }
     }
@@ -248,6 +278,7 @@ class MediaLoader(
     }
 
     fun dispose() {
+        watchdog?.cancel(false)
         tasks.forEach { it.cancel(true) }
         servedUrls.forEach(MediaServer::release)
     }
@@ -258,5 +289,6 @@ class MediaLoader(
     companion object {
         private val log = Logger.getInstance(MediaLoader::class.java)
         private const val PERCENT_SCALE = 100.0
+        private const val LOAD_TIMEOUT_SECONDS = 20L
     }
 }

@@ -23,6 +23,10 @@ object MediaServer {
 
     private val log = Logger.getInstance(MediaServer::class.java)
     private val files = ConcurrentHashMap<String, File>()
+
+    // Tokens the browser has actually fetched. Drives the load watchdog: a served-but-never-fetched
+    // token means the loopback URL is unreachable from the (possibly remote-dev/frontend-side) Chromium.
+    private val fetched = ConcurrentHashMap.newKeySet<String>()
     private const val CHUNK = 64 * 1024
 
     private const val HTTP_OK = 200
@@ -44,9 +48,14 @@ object MediaServer {
         return "http://127.0.0.1:${srv.address.port}/$token"
     }
 
+    /** True once the browser has fetched [url] at least once (any method, any range). */
+    fun wasFetched(url: String): Boolean = fetched.contains(url.substringAfterLast('/'))
+
     /** Stops serving the file behind [url]. */
     fun release(url: String) {
-        files.remove(url.substringAfterLast('/'))
+        val token = url.substringAfterLast('/')
+        files.remove(token)
+        fetched.remove(token)
     }
 
     private fun start(): HttpServer {
@@ -85,13 +94,17 @@ object MediaServer {
                 return
             }
 
-            val file = files[exchange.requestURI.path.trimStart('/')]
+            val token = exchange.requestURI.path.trimStart('/')
+            val file = files[token]
             if (file == null || !file.isFile) {
                 // A live editor requesting an unknown/vanished token signals a load-path failure, not a benign 404.
                 log.warn("Media request for missing file: ${exchange.requestURI.path} (registered=${file != null})")
                 exchange.sendResponseHeaders(HTTP_NOT_FOUND, -1)
                 return
             }
+            // First reachable fetch of this token: the watchdog reads this to tell a stalled load
+            // (URL never reached the browser) from a genuinely playing one.
+            if (fetched.add(token)) log.debug("First media fetch for token $token")
 
             headers.add("Content-Type", contentType(file))
             headers.add("Accept-Ranges", "bytes")
