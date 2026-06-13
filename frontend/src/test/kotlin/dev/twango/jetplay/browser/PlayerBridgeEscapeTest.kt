@@ -1,7 +1,7 @@
 package dev.twango.jetplay.browser
 
-import dev.twango.jetplay.transcode.MediaInfo
-import dev.twango.jetplay.transcode.MediaTag
+import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.media.MediaTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

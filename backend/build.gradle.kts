@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 dependencies {
     intellijPlatform {
         bundledModule("intellij.platform.kernel.backend")
@@ -6,8 +8,12 @@ dependencies {
         bundledModule("intellij.platform.backend")
         compileOnly(libs.kotlin.serialization.core.jvm)
         compileOnly(libs.kotlin.serialization.json.jvm)
+        testFramework(TestFrameworkType.Platform)
     }
     implementation(project(":shared"))
+
+    testImplementation(libs.junit)
+    testImplementation(libs.opentest4j)
 
     implementation("org.bytedeco:javacv:1.5.13") {
         exclude(group = "org.bytedeco", module = "opencv")

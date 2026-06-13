@@ -1,6 +1,5 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
-// Tests are parked here temporarily; Step 5 re-homes them per module.
 dependencies {
     intellijPlatform {
         bundledModule("intellij.platform.rpc")

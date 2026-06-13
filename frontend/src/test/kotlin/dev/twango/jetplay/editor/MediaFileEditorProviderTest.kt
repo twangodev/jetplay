@@ -1,14 +1,35 @@
 package dev.twango.jetplay.editor
 
+import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 class MediaFileEditorProviderTest : BasePlatformTestCase() {
 
     private lateinit var provider: MediaFileEditorProvider
 
+    // The fileType→extension mapping ships in the frontend module descriptor, which BasePlatformTestCase
+    // does not load. Register it here so the provider can resolve the Media type for these extensions.
+    private val mediaExtensions = listOf(
+        "mp4", "webm", "mkv", "avi", "mov", "mp3", "ogg", "wav", "flac", "aac", "opus",
+    )
+
     override fun setUp() {
         super.setUp()
         provider = MediaFileEditorProvider()
+        WriteAction.runAndWait<RuntimeException> {
+            mediaExtensions.forEach { FileTypeManager.getInstance().associateExtension(MediaFileType.INSTANCE, it) }
+        }
+    }
+
+    override fun tearDown() {
+        try {
+            WriteAction.runAndWait<RuntimeException> {
+                mediaExtensions.forEach { FileTypeManager.getInstance().removeAssociatedExtension(MediaFileType.INSTANCE, it) }
+            }
+        } finally {
+            super.tearDown()
+        }
     }
 
     fun testAcceptsMp4() {

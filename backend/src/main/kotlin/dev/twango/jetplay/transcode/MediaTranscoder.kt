@@ -37,6 +37,9 @@ object MediaTranscoder {
         "sln" to RawAudioHint("s16le", 8000, 1),
     )
 
+    /** Extensions for which a demuxer hint is configured; must stay in sync with the shared classifier. */
+    internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
+
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }
 
