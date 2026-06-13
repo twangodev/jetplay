@@ -61,6 +61,10 @@ object MediaServer {
     }
 
     private fun handle(exchange: HttpExchange) {
+        // Per-request trace: the only window into split-mode serving when playback silently stalls on a remote host.
+        if (log.isDebugEnabled) {
+            log.debug("${exchange.requestMethod} ${exchange.requestURI.path} range=${exchange.requestHeaders.getFirst("Range")}")
+        }
         try {
             val headers = exchange.responseHeaders
             // Null-origin JCEF page has no origin to allowlist; security rests on the random token + loopback bind + Host check.
@@ -83,6 +87,8 @@ object MediaServer {
 
             val file = files[exchange.requestURI.path.trimStart('/')]
             if (file == null || !file.isFile) {
+                // A live editor requesting an unknown/vanished token signals a load-path failure, not a benign 404.
+                log.warn("Media request for missing file: ${exchange.requestURI.path} (registered=${file != null})")
                 exchange.sendResponseHeaders(HTTP_NOT_FOUND, -1)
                 return
             }
