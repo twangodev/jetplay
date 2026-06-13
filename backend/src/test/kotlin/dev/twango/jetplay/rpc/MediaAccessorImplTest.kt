@@ -62,4 +62,12 @@ class MediaAccessorImplTest : BasePlatformTestCase() {
         val window = runBlocking { impl.readRange(fileId(data), projectId(), offset = 5, length = 100) }
         assertArrayEquals(byteArrayOf(5, 6, 7), window)
     }
+
+    fun testReadRangeFillsTheWholeBufferAcrossPartialReads() {
+        // A range larger than a typical single OS read must come back fully populated, not truncated
+        // to whatever the first raf.read() happened to return.
+        val data = ByteArray(256 * 1024) { (it % 251).toByte() }
+        val window = runBlocking { impl.readRange(fileId(data), projectId(), offset = 0, length = data.size) }
+        assertArrayEquals(data, window)
+    }
 }
