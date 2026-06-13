@@ -21,10 +21,9 @@ private const val CHUNK_BYTES = 1 shl 20 // 1 MB
 
 class MediaAccessorImpl : MediaAccessor {
 
-    private fun resolveFile(fileId: VirtualFileId): File? =
-        fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
-            runCatching { vf.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile }
-        }
+    private fun resolveFile(fileId: VirtualFileId): File? = fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
+        runCatching { vf.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile }
+    }
 
     override suspend fun streamFileBytes(fileId: VirtualFileId, projectId: ProjectId): Flow<ByteArray> = flow {
         val file = resolveFile(fileId) ?: return@flow
@@ -55,36 +54,37 @@ class MediaAccessorImpl : MediaAccessor {
         }
     }
 
-    override suspend fun transcodeFile(fileId: VirtualFileId, projectId: ProjectId): Flow<TranscodeEvent> = channelFlow {
-        if (!FfmpegAvailability.available) {
-            send(TranscodeEvent.Unavailable)
-            return@channelFlow
-        }
-        val input = resolveFile(fileId) ?: run {
-            send(TranscodeEvent.Failed("source unavailable"))
-            return@channelFlow
-        }
-        val output = try {
-            withContext(Dispatchers.IO) {
-                // onProgress fires synchronously inside ffmpeg; trySend bridges it onto this channel without suspending.
-                TranscodeRunner.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
+    override suspend fun transcodeFile(fileId: VirtualFileId, projectId: ProjectId): Flow<TranscodeEvent> =
+        channelFlow {
+            if (!FfmpegAvailability.available) {
+                send(TranscodeEvent.Unavailable)
+                return@channelFlow
             }
-        } catch (e: Exception) {
-            send(TranscodeEvent.Failed(e.message ?: "unknown"))
-            return@channelFlow
-        }
-        withContext(Dispatchers.IO) {
-            RandomAccessFile(output, "r").use { raf ->
-                val buf = ByteArray(CHUNK_BYTES)
-                while (true) {
-                    val n = raf.read(buf)
-                    if (n <= 0) break
-                    send(TranscodeEvent.Chunk(if (n == buf.size) buf.copyOf() else buf.copyOf(n)))
+            val input = resolveFile(fileId) ?: run {
+                send(TranscodeEvent.Failed("source unavailable"))
+                return@channelFlow
+            }
+            val output = try {
+                withContext(Dispatchers.IO) {
+                    // onProgress fires synchronously inside ffmpeg; trySend bridges it onto this channel without suspending.
+                    TranscodeRunner.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
+                }
+            } catch (e: Exception) {
+                send(TranscodeEvent.Failed(e.message ?: "unknown"))
+                return@channelFlow
+            }
+            withContext(Dispatchers.IO) {
+                RandomAccessFile(output, "r").use { raf ->
+                    val buf = ByteArray(CHUNK_BYTES)
+                    while (true) {
+                        val n = raf.read(buf)
+                        if (n <= 0) break
+                        send(TranscodeEvent.Chunk(if (n == buf.size) buf.copyOf() else buf.copyOf(n)))
+                    }
                 }
             }
+            send(TranscodeEvent.Done)
         }
-        send(TranscodeEvent.Done)
-    }
 
     override suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double> {
         if (!FfmpegAvailability.available) return emptyList()

@@ -138,6 +138,8 @@ detekt {
     buildUponDefaultConfig = true
     config.setFrom(files("$projectDir/detekt.yml"))
     basePath.set(projectDir)
+    // Sources moved into content modules; point detekt at them so the root task still lints the codebase.
+    source.setFrom(subprojects.map { it.layout.projectDirectory.dir("src/main/kotlin") })
 }
 
 tasks.withType<dev.detekt.gradle.Detekt>().configureEach {

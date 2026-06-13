@@ -15,8 +15,11 @@ import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class MediaFileEditor(private val project: Project, private val file: VirtualFile, private val source: EditorMediaSource) :
-    UserDataHolderBase(),
+class MediaFileEditor(
+    private val project: Project,
+    private val file: VirtualFile,
+    private val source: EditorMediaSource,
+) : UserDataHolderBase(),
     FileEditor {
 
     private val browser = JBCefBrowser()
