@@ -24,7 +24,7 @@ private const val CHUNK_BYTES = 1 shl 20 // 1 MB
 
 class MediaAccessorImpl : MediaAccessor {
 
-    // Resolve only within a live project: an unresolvable projectId means a stale or out-of-context RPC caller.
+    // Resolve only within a live project; a dead projectId means a stale RPC caller.
     private fun resolveFile(fileId: VirtualFileId, projectId: ProjectId): File? {
         if (projectId.findProjectOrNull() == null) return null
         return fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
@@ -54,8 +54,7 @@ class MediaAccessorImpl : MediaAccessor {
             RandomAccessFile(file, "r").use { raf ->
                 raf.seek(offset)
                 val out = ByteArray(length)
-                // A single raf.read() may return fewer bytes than requested even when more remain
-                // (JDK contract); loop until the buffer is full or EOF is hit.
+                // raf.read() may return a short count; loop until full or EOF.
                 var total = 0
                 while (total < length) {
                     val n = raf.read(out, total, length - total)
@@ -82,7 +81,7 @@ class MediaAccessorImpl : MediaAccessor {
             }
             val output = try {
                 withContext(Dispatchers.IO) {
-                    // onProgress fires synchronously inside ffmpeg; trySend bridges it onto this channel without suspending.
+                    // onProgress fires synchronously inside ffmpeg, so trySend (non-suspending) bridges it.
                     TranscodeRunner.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
                 }
             } catch (e: Exception) {
@@ -101,7 +100,7 @@ class MediaAccessorImpl : MediaAccessor {
                     }
                 }
             } finally {
-                // The transcoded bytes now live in the frontend temp; the backend copy is no longer needed.
+                // Frontend now holds the bytes; drop the backend copy.
                 runCatching { output.delete() }
             }
             send(TranscodeEvent.Done)

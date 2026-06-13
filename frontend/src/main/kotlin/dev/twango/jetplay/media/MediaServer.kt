@@ -14,19 +14,17 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * Loopback HTTP server streaming registered local media to JCEF. http+CORS+range
- * (not file://) lets the null-origin page fetch()/decode audio and range-seek large files.
+ * Loopback HTTP server streaming registered local media to JCEF; http+CORS+range lets the
+ * null-origin page fetch/decode and range-seek where file:// cannot.
  *
- * Security: binds 127.0.0.1 only; serves ONLY files registered via [serve], each
- * behind an unguessable random token (no directory listing, no traversal).
+ * Security: binds 127.0.0.1 only; serves only files registered via [serve], each behind a random token.
  */
 object MediaServer {
 
     private val log = Logger.getInstance(MediaServer::class.java)
     private val files = ConcurrentHashMap<String, File>()
 
-    // Tokens the browser has actually fetched. Drives the load watchdog: a served-but-never-fetched
-    // token means the loopback URL is unreachable from the (possibly remote-dev/frontend-side) Chromium.
+    // Tokens the browser actually fetched; a served-but-never-fetched token means the loopback URL is unreachable.
     private val fetched = ConcurrentHashMap.newKeySet<String>()
     private const val CHUNK = 64 * 1024
 
@@ -49,7 +47,7 @@ object MediaServer {
         return "http://127.0.0.1:${srv.address.port}/$token"
     }
 
-    /** True once the browser has fetched [url] at least once (any method, any range). */
+    /** True once the browser has fetched [url] at least once. */
     fun wasFetched(url: String): Boolean = fetched.contains(tokenOf(url))
 
     /** Stops serving the file behind [url]. */
@@ -59,7 +57,7 @@ object MediaServer {
         fetched.remove(token)
     }
 
-    // Mirror [handle]'s extraction (request path, query/fragment stripped) so fetch-state lookups never drift from the served key.
+    // Mirror [handle]'s path extraction so fetch-state lookups never drift from the served key.
     private fun tokenOf(url: String): String =
         runCatching { URI(url).path }.getOrNull()?.trimStart('/') ?: url.substringAfterLast('/')
 
@@ -75,7 +73,7 @@ object MediaServer {
     }
 
     private fun handle(exchange: HttpExchange) {
-        // Per-request trace: the only window into split-mode serving when playback silently stalls on a remote host.
+        // Per-request trace: the only window into serving when playback silently stalls on a remote host.
         if (log.isDebugEnabled) {
             log.debug("${exchange.requestMethod} ${exchange.requestURI.path} range=${exchange.requestHeaders.getFirst("Range")}")
         }
@@ -107,8 +105,7 @@ object MediaServer {
                 exchange.sendResponseHeaders(HTTP_NOT_FOUND, -1)
                 return
             }
-            // First reachable fetch of this token: the watchdog reads this to tell a stalled load
-            // (URL never reached the browser) from a genuinely playing one.
+            // First reachable fetch: the watchdog reads this to tell a stalled load from a playing one.
             if (fetched.add(token)) log.debug("First media fetch for token $token")
 
             headers.add("Content-Type", contentType(file))
@@ -132,9 +129,9 @@ object MediaServer {
     private fun isLoopbackHost(host: String?): Boolean {
         if (host.isNullOrBlank()) return false
         val name = if (host.startsWith("[")) {
-            host.substringAfter("[").substringBefore("]") // [::1]:port
+            host.substringAfter("[").substringBefore("]")
         } else {
-            host.substringBefore(":") // 127.0.0.1:port / localhost:port
+            host.substringBefore(":")
         }
         return name.equals("127.0.0.1", true) || name.equals("localhost", true) || name.equals("::1", true)
     }

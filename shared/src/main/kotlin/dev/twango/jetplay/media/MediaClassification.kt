@@ -2,7 +2,7 @@ package dev.twango.jetplay.media
 
 object MediaClassification {
 
-    // Video subset of extensions registered in plugin.xml — keep in sync
+    // Keep in sync with the video extensions in plugin.xml.
     private val VIDEO_EXTENSIONS = setOf(
         "mp4",
         "m4v",
@@ -32,7 +32,7 @@ object MediaClassification {
         "mp3",
     )
 
-    // Headerless raw codec streams that need explicit demuxer hints; backend supplies the demuxer config.
+    // Headerless raw codec streams that need explicit demuxer hints.
     val rawAudioExtensions: Set<String> = setOf(
         "pcmu",
         "ulaw",

@@ -10,10 +10,7 @@ import dev.twango.jetplay.JetPlayBundle
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 
-/**
- * Plain-Swing fallback editor for when JCEF (the media renderer) is unavailable. Shown instead of
- * an empty/broken browser pane so the failure is explicit rather than an indefinite blank tab.
- */
+/** Plain-Swing fallback editor that makes JCEF unavailability explicit instead of a blank tab. */
 class MediaErrorEditor(private val file: VirtualFile, message: String) :
     UserDataHolderBase(),
     FileEditor {

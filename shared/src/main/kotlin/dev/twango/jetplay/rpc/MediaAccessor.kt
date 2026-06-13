@@ -15,18 +15,18 @@ import org.jetbrains.annotations.ApiStatus
 @ApiStatus.Internal
 @Rpc
 interface MediaAccessor : RemoteApi<Unit> {
-    /** Stream raw source bytes in order. Primary path; element type is plain ByteArray (Serializable). */
+    /** Primary path: stream raw source bytes in order. */
     suspend fun streamFileBytes(fileId: VirtualFileId, projectId: ProjectId): Flow<ByteArray>
 
-    /** Fallback random-access read; always available even if Flow streaming underperforms on large media. */
+    /** Fallback random-access read for when Flow streaming underperforms. */
     suspend fun fileLength(fileId: VirtualFileId, projectId: ProjectId): Long
 
     suspend fun readRange(fileId: VirtualFileId, projectId: ProjectId, offset: Long, length: Int): ByteArray
 
-    /** Transcode to WebM on backend; emit progress then the transcoded bytes as a stream. */
+    /** Transcode to WebM on backend, emitting progress then bytes. */
     suspend fun transcodeFile(fileId: VirtualFileId, projectId: ProjectId): Flow<TranscodeEvent>
 
-    /** Empty list if ffmpeg unavailable or format unsupported (NEVER throws to caller). */
+    /** Never throws: empty list if ffmpeg unavailable or format unsupported. */
     suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double>
 
     /** null if ffmpeg unavailable or no readable stream. */

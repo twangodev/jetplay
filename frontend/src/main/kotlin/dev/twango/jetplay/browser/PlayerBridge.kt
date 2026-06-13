@@ -30,7 +30,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         }
     }
 
-    // Stash on window before notifying: a fast transcode can beat page load, so the app reads the stash on mount.
+    // Stash before notifying: a fast transcode can beat page load.
     fun updateProgress(percent: Double) =
         executeJs("window.__jetplayProgress=$percent;window.jetplayUpdateProgress?.($percent)")
 
@@ -49,7 +49,6 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             "if(window.jetplayWaveform)window.jetplayWaveform(window.__jetplayWaveform)",
     )
 
-    // Same stash-then-notify race guard as updateProgress.
     fun sendMediaInfo(info: MediaInfo) {
         val json = mediaInfoJson(info) ?: return
         executeJs("window.__jetplayMediaInfo=$json;if(window.jetplayMediaInfo)window.jetplayMediaInfo(window.__jetplayMediaInfo)")
@@ -75,7 +74,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             .replace("<", "\\x3c")
             .replace(">", "\\x3e")
 
-        // Built as strict JSON (a JS subset), not spliced, because it carries arbitrary tag text and a base64 art URL.
+        // Strict JSON, not spliced: it carries arbitrary tag text and a base64 art URL.
         internal fun mediaInfoJson(info: MediaInfo): String? {
             val parts = buildList {
                 info.codec?.let { add("\"codec\":${jsonString(it)}") }
@@ -124,7 +123,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
 
                     '\u000C' -> sb.append("\\f")
 
-                    // Valid in JSON but terminate a JS string literal — must escape.
+                    // Valid in JSON but terminate a JS string literal.
                     '\u2028' -> sb.append("\\u2028")
 
                     '\u2029' -> sb.append("\\u2029")

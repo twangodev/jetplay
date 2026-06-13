@@ -38,7 +38,7 @@ class MediaLoader(
 
     private val tasks = CopyOnWriteArrayList<Future<*>>()
 
-    // Loopback URLs handed out for this editor's media, released on dispose.
+    // Loopback URLs to release on dispose.
     private val servedUrls = CopyOnWriteArrayList<String>()
 
     @Volatile
@@ -46,11 +46,7 @@ class MediaLoader(
 
     private fun serve(file: File): String = MediaServer.serve(file).also { servedUrls.add(it) }
 
-    /**
-     * The player has the URL but JCEF may never reach the loopback server (frontend-side CEF in remote
-     * dev). If nothing fetches the token before the deadline, surface an explicit error so the user
-     * sees a diagnosable failure instead of an indefinite spinner.
-     */
+    /** JCEF may never reach the loopback server; error out if the token is unfetched by the deadline. */
     private fun armLoadWatchdog(url: String) {
         watchdog?.cancel(false)
         watchdog = AppExecutorUtil.getAppScheduledExecutorService().schedule({
@@ -71,9 +67,7 @@ class MediaLoader(
     private val projectId by lazy { project.projectId() }
 
     fun load() {
-        // Transcoding (remote or local) runs entirely backend-side: ffmpeg reads the file there and
-        // streams WebM back. Pre-downloading the source would only waste bandwidth — the transcode
-        // re-reads it on the backend regardless — so transcoding takes precedence over the download path.
+        // Transcoding runs backend-side and re-reads the source, so it takes precedence over download.
         when {
             source.needsTranscoding -> startTranscoding()
             source.isRemote -> startDownload()
@@ -128,8 +122,7 @@ class MediaLoader(
     }
 
     private fun startTranscoding() {
-        // Transcoding (local or remote) runs backend-side with no prior page loaded, so render the
-        // loading shell directly rather than pushing a state change into a page that may not exist yet.
+        // No prior page exists yet, so render the loading shell directly instead of pushing a state change.
         htmlLoader.load(
             PlayerConfig(
                 state = "loading",
@@ -182,7 +175,6 @@ class MediaLoader(
     private fun playDirectly() {
         val local = source.localFileOrNull()
         if (local != null) {
-            // MONOLITH / local file: identical to today — serve the real file, no RPC, no temp copy.
             val url = serve(local)
             htmlLoader.load(
                 PlayerConfig(
@@ -196,8 +188,7 @@ class MediaLoader(
             armLoadWatchdog(url)
             return
         }
-        // SPLIT MODE: pull bytes from backend into a temp file, then serve. Show a loading shell up
-        // front so the streaming RPC doesn't leave the tab on a blank Chromium page.
+        // Show a loading shell up front so the streaming RPC doesn't leave the tab on a blank page.
         htmlLoader.load(
             PlayerConfig(
                 state = "loading",
@@ -248,9 +239,7 @@ class MediaLoader(
             showLoadError(e.message)
             return null
         }
-        // The backend emits an empty flow (no bytes, no error) when it can't resolve the file
-        // (e.g. a non-LocalFileSystem VirtualFile). Serving the 0-byte temp would hand the player
-        // a permanently broken URL with no diagnosable failure — surface an explicit error instead.
+        // Backend emits an empty flow when it can't resolve the file; error out instead of serving 0 bytes.
         if (written == 0L) {
             temp.delete()
             showLoadError(JetPlayBundle.message("error.empty"))
@@ -273,8 +262,7 @@ class MediaLoader(
     }
 
     private fun showTranscodingError() {
-        // Load the shell in the error state: this runs before any page exists, so a
-        // bridge.showError() JS push would have nothing to render against.
+        // No page exists yet, so load the shell in the error state rather than pushing showError over JS.
         htmlLoader.load(
             PlayerConfig(
                 state = "error",

@@ -17,13 +17,13 @@ object MediaInfoExtractor {
 
     private val log = Logger.getInstance(MediaInfoExtractor::class.java)
 
-    // Lossy codecs decode to float internally, so their "bit depth" would be misleading; only these report it.
+    // Only lossless codecs report a meaningful bit depth; lossy decode to float internally.
     private val LOSSLESS = setOf("flac", "alac", "wavpack", "truehd", "mlp", "tta", "als")
 
-    // Larger cover art only bloats the bridge payload; a blurred background needs no fidelity (typical art < 1 MB).
+    // Cap cover art: larger only bloats the bridge payload.
     private const val MAX_ART_BYTES = 4_000_000
 
-    // Lowercase FFmpeg metadata keys mapped to display labels, in display order.
+    // FFmpeg metadata keys to display labels, in display order.
     private val TAG_FIELDS = listOf(
         "title" to "Title",
         "artist" to "Artist",
@@ -54,7 +54,7 @@ object MediaInfoExtractor {
 
     /** Returns the file's stream metadata, or null if it has no readable streams. */
     fun extract(file: File): MediaInfo? {
-        // RAW reports the source sample/pixel formats; SHORT/COLOR would report the decoder's output instead.
+        // RAW reports the source sample/pixel formats, not the decoder's output.
         val grabber = FFmpegFrameGrabber(file).apply {
             sampleMode = FrameGrabber.SampleMode.RAW
             imageMode = FrameGrabber.ImageMode.RAW
@@ -71,13 +71,11 @@ object MediaInfoExtractor {
             val durationMs = grabber.lengthInTime.takeIf { it > 0 }?.div(1000)
             val sizeBytes = file.length().takeIf { it > 0 }
 
-            // Audio (canonical codec from the id, not the decoder name).
             val audioCodec = if (hasAudio) canonicalCodec(grabber.audioCodec) else null
             val audioBitrate = if (hasAudio) grabber.audioBitrate.toLong().takeIf { it > 0 } else null
-            // The size/duration fallback is whole-file bitrate, valid for audio only when there is no video.
+            // Whole-file bitrate fallback is valid for audio only when there is no video.
             val bitrate = audioBitrate ?: if (!hasVideo) computeBitrate(sizeBytes, durationMs) else null
 
-            // Video.
             val videoCodec = if (hasVideo) canonicalCodec(grabber.videoCodec) else null
             val frameRate = if (hasVideo) grabber.videoFrameRate.takeIf { it.isFinite() && it > 0 } else null
             val pixelFormat = if (hasVideo) {
@@ -115,7 +113,7 @@ object MediaInfoExtractor {
         }
     }
 
-    // Codec name from the id ("mp3", "h264"), not the decoder name ("mp3float") the *CodecName getters return.
+    // Codec name from the id, not the decoder name the *CodecName getters return.
     private fun canonicalCodec(codecId: Int): String? =
         avcodec.avcodec_get_name(codecId)?.getString()?.takeIf { it.isNotBlank() && it != "unknown" && it != "none" }
 
@@ -138,7 +136,7 @@ object MediaInfoExtractor {
     private fun bitDepth(codec: String?, sampleFormat: Int): String? = when {
         codec == null -> null
 
-        // PCM names carry exact depth (pcm_s24le → 24-bit); the sample format would widen it to S32.
+        // PCM names carry exact depth; the sample format would widen it.
         codec.startsWith("pcm_") -> PCM_PATTERN.find(codec)?.let { match ->
             val bits = match.groupValues[2]
             if (match.groupValues[1] == "f") "$bits-bit float" else "$bits-bit"
@@ -156,17 +154,16 @@ object MediaInfoExtractor {
         else -> null
     }
 
-    /** Maps FFmpeg's metadata map to an ordered, labeled list of display tags. */
     internal fun buildTags(metadata: Map<String, String>): List<MediaTag> {
         if (metadata.isEmpty()) return emptyList()
-        // FFmpeg keys are normally lowercase, but be tolerant of odd containers.
+        // Tolerate non-lowercase keys from odd containers.
         val lower = metadata.entries.associate { it.key.lowercase() to it.value }
         return TAG_FIELDS.mapNotNull { (key, label) ->
             lower[key]?.trim()?.takeIf { it.isNotEmpty() }?.let { MediaTag(label, it) }
         }
     }
 
-    /** First attached-picture stream's raw bytes as a `data:` URL — sniff the type and base64, no decode/re-encode. */
+    /** First attached-picture stream's raw bytes as a `data:` URL, with no decode/re-encode. */
     private fun extractAlbumArt(grabber: FFmpegFrameGrabber): String? {
         return try {
             val oc = grabber.formatContext ?: return null

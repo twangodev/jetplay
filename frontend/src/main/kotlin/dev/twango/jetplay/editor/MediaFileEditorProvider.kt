@@ -19,8 +19,7 @@ class MediaFileEditorProvider :
     override fun accept(project: Project, file: VirtualFile): Boolean = file.fileType == MediaFileType.INSTANCE
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        // No JCEF (e.g. headless JBR, or this provider somehow loaded on a remote-dev host) → explicit
-        // error rather than an empty pane that spins forever waiting on a browser that never renders.
+        // Without JCEF, show an explicit error rather than a pane that spins forever on a browser that never renders.
         if (!JBCefApp.isSupported()) {
             log.warn("JCEF unavailable; opening ${file.name} in fallback error editor")
             return MediaErrorEditor(file, JetPlayBundle.message("error.jcef.unavailable"))

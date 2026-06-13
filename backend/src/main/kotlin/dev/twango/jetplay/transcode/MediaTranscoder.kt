@@ -37,7 +37,7 @@ object MediaTranscoder {
         "sln" to RawAudioHint("s16le", 8000, 1),
     )
 
-    /** Extensions for which a demuxer hint is configured; must stay in sync with the shared classifier. */
+    /** Must stay in sync with the shared classifier. */
     internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
 
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
@@ -97,7 +97,7 @@ object MediaTranscoder {
             recorder.videoBitrate = grabber.videoBitrate.takeIf { it > 0 } ?: DEFAULT_VIDEO_BITRATE
             recorder.frameRate = grabber.frameRate.takeIf { it > 0 } ?: DEFAULT_FRAME_RATE
             recorder.gopSize = DEFAULT_GOP_SIZE
-            // Previews only need to be watchable; libvpx's default deadline is so slow an HD clip looks hung.
+            // libvpx's default deadline is so slow an HD clip looks hung.
             recorder.setVideoOption("deadline", "realtime")
             recorder.setVideoOption("cpu-used", "8")
             recorder.setVideoOption("row-mt", "1")

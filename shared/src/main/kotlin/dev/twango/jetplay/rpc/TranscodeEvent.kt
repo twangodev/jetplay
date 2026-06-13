@@ -17,11 +17,11 @@ sealed interface TranscodeEvent {
     @Serializable
     data object Done : TranscodeEvent
 
-    /** Raw (un-localized) error string; frontend wraps with JetPlayBundle. */
+    /** Raw un-localized error string. */
     @Serializable
     data class Failed(val message: String) : TranscodeEvent
 
-    /** ffmpeg not available on backend — frontend shows transcoding-error state. */
+    /** ffmpeg not available on backend. */
     @Serializable
     data object Unavailable : TranscodeEvent
 }
