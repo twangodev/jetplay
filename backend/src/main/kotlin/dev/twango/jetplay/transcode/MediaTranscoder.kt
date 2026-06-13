@@ -24,18 +24,6 @@ object MediaTranscoder {
     private const val INDETERMINATE_TENTH = -1L
     private const val REPORTED_INDETERMINATE_TENTH = -2L
 
-    // Chromium can play these natively, so JCEF needs no transcoding.
-    private val JCEF_NATIVE_EXTENSIONS = setOf(
-        "webm",
-        "ogv",
-        "ogg",
-        "oga",
-        "opus",
-        "wav",
-        "flac",
-        "mp3",
-    )
-
     // Headerless raw codec streams need an explicit demuxer + sample rate + channels.
     private data class RawAudioHint(val format: String, val sampleRate: Int, val channels: Int)
 
@@ -48,10 +36,6 @@ object MediaTranscoder {
         "gsm" to RawAudioHint("gsm", 8000, 1),
         "sln" to RawAudioHint("s16le", 8000, 1),
     )
-
-    internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
-
-    fun needsTranscoding(extension: String?): Boolean = extension?.lowercase() !in JCEF_NATIVE_EXTENSIONS
 
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }

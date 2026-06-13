@@ -2,6 +2,12 @@
     <dependencies>
         <module name="intellij.platform.backend"/>
         <module name="intellij.platform.kernel.backend"/>
+        <module name="intellij.platform.rpc.backend"/>
         <module name="dev.twango.jetplay.shared"/>
     </dependencies>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <platform.rpc.backend.remoteApiProvider
+                implementation="dev.twango.jetplay.rpc.MediaAccessorProvider"/>
+    </extensions>
 </idea-plugin>

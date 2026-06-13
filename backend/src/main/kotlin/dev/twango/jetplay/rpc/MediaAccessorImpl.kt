@@ -1,0 +1,100 @@
+package dev.twango.jetplay.rpc
+
+import com.intellij.ide.vfs.VirtualFileId
+import com.intellij.ide.vfs.virtualFile
+import com.intellij.platform.project.ProjectId
+import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.transcode.FfmpegAvailability
+import dev.twango.jetplay.transcode.MediaInfoExtractor
+import dev.twango.jetplay.transcode.TranscodeRunner
+import dev.twango.jetplay.transcode.WaveformExtractor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.RandomAccessFile
+
+private const val CHUNK_BYTES = 1 shl 20 // 1 MB
+
+class MediaAccessorImpl : MediaAccessor {
+
+    private fun resolveFile(fileId: VirtualFileId): File? =
+        fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
+            runCatching { vf.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile }
+        }
+
+    override suspend fun streamFileBytes(fileId: VirtualFileId, projectId: ProjectId): Flow<ByteArray> = flow {
+        val file = resolveFile(fileId) ?: return@flow
+        RandomAccessFile(file, "r").use { raf ->
+            val buf = ByteArray(CHUNK_BYTES)
+            while (true) {
+                val n = raf.read(buf)
+                if (n <= 0) break
+                emit(if (n == buf.size) buf.copyOf() else buf.copyOf(n))
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    override suspend fun fileLength(fileId: VirtualFileId, projectId: ProjectId): Long =
+        resolveFile(fileId)?.length() ?: -1L
+
+    override suspend fun readRange(fileId: VirtualFileId, projectId: ProjectId, offset: Long, length: Int): ByteArray {
+        val file = resolveFile(fileId) ?: return ByteArray(0)
+        RandomAccessFile(file, "r").use { raf ->
+            raf.seek(offset)
+            val out = ByteArray(length)
+            val read = raf.read(out)
+            return when {
+                read <= 0 -> ByteArray(0)
+                read == length -> out
+                else -> out.copyOf(read)
+            }
+        }
+    }
+
+    override suspend fun transcodeFile(fileId: VirtualFileId, projectId: ProjectId): Flow<TranscodeEvent> = channelFlow {
+        if (!FfmpegAvailability.available) {
+            send(TranscodeEvent.Unavailable)
+            return@channelFlow
+        }
+        val input = resolveFile(fileId) ?: run {
+            send(TranscodeEvent.Failed("source unavailable"))
+            return@channelFlow
+        }
+        val output = try {
+            withContext(Dispatchers.IO) {
+                // onProgress fires synchronously inside ffmpeg; trySend bridges it onto this channel without suspending.
+                TranscodeRunner.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
+            }
+        } catch (e: Exception) {
+            send(TranscodeEvent.Failed(e.message ?: "unknown"))
+            return@channelFlow
+        }
+        withContext(Dispatchers.IO) {
+            RandomAccessFile(output, "r").use { raf ->
+                val buf = ByteArray(CHUNK_BYTES)
+                while (true) {
+                    val n = raf.read(buf)
+                    if (n <= 0) break
+                    send(TranscodeEvent.Chunk(if (n == buf.size) buf.copyOf() else buf.copyOf(n)))
+                }
+            }
+        }
+        send(TranscodeEvent.Done)
+    }
+
+    override suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double> {
+        if (!FfmpegAvailability.available) return emptyList()
+        val file = resolveFile(fileId) ?: return emptyList()
+        return runCatching { WaveformExtractor.extract(file) }.getOrDefault(emptyList())
+    }
+
+    override suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo? {
+        if (!FfmpegAvailability.available) return null
+        val file = resolveFile(fileId) ?: return null
+        return runCatching { MediaInfoExtractor.extract(file) }.getOrNull()
+    }
+}

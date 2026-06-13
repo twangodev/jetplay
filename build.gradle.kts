@@ -18,7 +18,7 @@ group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 subprojects {
@@ -28,7 +28,7 @@ subprojects {
     apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
 
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(21)
     }
 
     dependencies {

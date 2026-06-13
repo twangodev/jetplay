@@ -4,7 +4,7 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
-import dev.twango.jetplay.transcode.MediaInfo
+import dev.twango.jetplay.media.MediaInfo
 import javax.swing.SwingUtilities
 
 class PlayerBridge(private val browser: JBCefBrowser) {

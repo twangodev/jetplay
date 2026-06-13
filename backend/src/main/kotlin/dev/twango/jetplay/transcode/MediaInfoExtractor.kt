@@ -1,6 +1,8 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.media.MediaTag
 import org.bytedeco.ffmpeg.avformat.AVStream
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.ffmpeg.global.avformat
@@ -9,34 +11,6 @@ import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
 import java.util.Base64
-
-/** Codec-inspector metadata; nullable fields let the UI skip anything FFmpeg couldn't determine. */
-data class MediaInfo(
-    val codec: String?,
-    val container: String?,
-    val sampleRateHz: Int?,
-    val channels: Int?,
-    val channelLabel: String?,
-    /** Only set when meaningful (PCM / lossless). Null for lossy codecs. */
-    val bitDepth: String?,
-    val bitrateBps: Long?,
-    val durationMs: Long?,
-    val sizeBytes: Long?,
-    // Video-stream fields (null for audio-only files).
-    val width: Int? = null,
-    val height: Int? = null,
-    val frameRate: Double? = null,
-    val videoCodec: String? = null,
-    val pixelFormat: String? = null,
-    val videoBitrateBps: Long? = null,
-    /** Embedded text tags (title/artist/album/…), in display order. */
-    val tags: List<MediaTag> = emptyList(),
-    /** Embedded cover art as a `data:` URL, or null when there is none. */
-    val albumArt: String? = null,
-)
-
-/** One embedded metadata tag, already labeled for display. */
-data class MediaTag(val label: String, val value: String)
 
 /** Probes audio/video stream details via header-only FFmpeg reads; null when no readable stream exists. */
 object MediaInfoExtractor {

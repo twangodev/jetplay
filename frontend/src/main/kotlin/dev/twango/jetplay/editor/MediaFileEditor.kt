@@ -9,13 +9,13 @@ import com.intellij.ui.jcef.JBCefBrowser
 import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.browser.PlayerBridge
 import dev.twango.jetplay.browser.PlayerHtmlLoader
-import dev.twango.jetplay.media.MediaSource
+import dev.twango.jetplay.media.EditorMediaSource
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import javax.swing.JComponent
 import javax.swing.JPanel
 
-class MediaFileEditor(private val project: Project, private val file: VirtualFile, private val source: MediaSource) :
+class MediaFileEditor(private val project: Project, private val file: VirtualFile, private val source: EditorMediaSource) :
     UserDataHolderBase(),
     FileEditor {
 

@@ -1,7 +1,6 @@
 package dev.twango.jetplay.media
 
 import com.intellij.openapi.vfs.VirtualFile
-import dev.twango.jetplay.transcode.MediaTranscoder
 import java.io.File
 
 class LocalFileMediaSource(private val file: VirtualFile) : MediaSource {
@@ -12,9 +11,9 @@ class LocalFileMediaSource(private val file: VirtualFile) : MediaSource {
 
     override val isVideo: Boolean = MediaClassification.isVideo(extension)
 
-    override val needsTranscoding: Boolean = MediaTranscoder.needsTranscoding(extension)
+    override val needsTranscoding: Boolean = MediaClassification.needsTranscoding(extension)
 
     override val isRemote: Boolean = false
 
-    override fun toLocalFile(): File = file.toNioPath().toFile()
+    fun toLocalFile(): File = file.toNioPath().toFile()
 }
