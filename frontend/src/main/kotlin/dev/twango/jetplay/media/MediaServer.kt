@@ -7,6 +7,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.URI
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -49,14 +50,18 @@ object MediaServer {
     }
 
     /** True once the browser has fetched [url] at least once (any method, any range). */
-    fun wasFetched(url: String): Boolean = fetched.contains(url.substringAfterLast('/'))
+    fun wasFetched(url: String): Boolean = fetched.contains(tokenOf(url))
 
     /** Stops serving the file behind [url]. */
     fun release(url: String) {
-        val token = url.substringAfterLast('/')
+        val token = tokenOf(url)
         files.remove(token)
         fetched.remove(token)
     }
+
+    // Mirror [handle]'s extraction (request path, query/fragment stripped) so fetch-state lookups never drift from the served key.
+    private fun tokenOf(url: String): String =
+        runCatching { URI(url).path }.getOrNull()?.trimStart('/') ?: url.substringAfterLast('/')
 
     private fun start(): HttpServer {
         val srv = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
