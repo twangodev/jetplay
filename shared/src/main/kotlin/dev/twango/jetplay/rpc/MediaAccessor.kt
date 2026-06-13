@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package dev.twango.jetplay.rpc
 
 import com.intellij.ide.vfs.VirtualFileId
