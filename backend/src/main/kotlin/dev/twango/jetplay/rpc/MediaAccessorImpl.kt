@@ -45,11 +45,18 @@ class MediaAccessorImpl : MediaAccessor {
         RandomAccessFile(file, "r").use { raf ->
             raf.seek(offset)
             val out = ByteArray(length)
-            val read = raf.read(out)
-            return when {
-                read <= 0 -> ByteArray(0)
-                read == length -> out
-                else -> out.copyOf(read)
+            // A single raf.read() may return fewer bytes than requested even when more remain
+            // (JDK contract); loop until the buffer is full or EOF is hit.
+            var total = 0
+            while (total < length) {
+                val n = raf.read(out, total, length - total)
+                if (n < 0) break
+                total += n
+            }
+            return when (total) {
+                0 -> ByteArray(0)
+                length -> out
+                else -> out.copyOf(total)
             }
         }
     }
@@ -73,15 +80,20 @@ class MediaAccessorImpl : MediaAccessor {
                 send(TranscodeEvent.Failed(e.message ?: "unknown"))
                 return@channelFlow
             }
-            withContext(Dispatchers.IO) {
-                RandomAccessFile(output, "r").use { raf ->
-                    val buf = ByteArray(CHUNK_BYTES)
-                    while (true) {
-                        val n = raf.read(buf)
-                        if (n <= 0) break
-                        send(TranscodeEvent.Chunk(if (n == buf.size) buf.copyOf() else buf.copyOf(n)))
+            try {
+                withContext(Dispatchers.IO) {
+                    RandomAccessFile(output, "r").use { raf ->
+                        val buf = ByteArray(CHUNK_BYTES)
+                        while (true) {
+                            val n = raf.read(buf)
+                            if (n <= 0) break
+                            send(TranscodeEvent.Chunk(if (n == buf.size) buf.copyOf() else buf.copyOf(n)))
+                        }
                     }
                 }
+            } finally {
+                // The transcoded bytes now live in the frontend temp; the backend copy is no longer needed.
+                runCatching { output.delete() }
             }
             send(TranscodeEvent.Done)
         }

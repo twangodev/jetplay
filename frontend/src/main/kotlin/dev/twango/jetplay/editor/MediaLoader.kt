@@ -71,9 +71,12 @@ class MediaLoader(
     private val projectId by lazy { project.projectId() }
 
     fun load() {
+        // Transcoding (remote or local) runs entirely backend-side: ffmpeg reads the file there and
+        // streams WebM back. Pre-downloading the source would only waste bandwidth — the transcode
+        // re-reads it on the backend regardless — so transcoding takes precedence over the download path.
         when {
-            source.isRemote -> startDownload()
             source.needsTranscoding -> startTranscoding()
+            source.isRemote -> startDownload()
             else -> playDirectly()
         }
         maybeSendWaveform()
@@ -114,32 +117,29 @@ class MediaLoader(
         )
         submit {
             val temp = streamToTemp(::reportDownloadProgress) ?: return@submit
-            if (bridge.disposed) return@submit
-            if (source.needsTranscoding) {
-                startTranscoding()
-            } else {
-                val url = serve(temp)
-                bridge.mediaReady(url)
-                armLoadWatchdog(url)
+            if (bridge.disposed) {
+                temp.delete()
+                return@submit
             }
+            val url = serve(temp)
+            bridge.mediaReady(url)
+            armLoadWatchdog(url)
         }
     }
 
     private fun startTranscoding() {
-        if (source.isRemote) {
-            bridge.executeJs("window.__jetplayState='loading';window.__jetplayProgress=0;window.jetplayStartTranscoding?.()")
-        } else {
-            htmlLoader.load(
-                PlayerConfig(
-                    state = "loading",
-                    isVideo = source.isVideo,
-                    fileName = source.fileName,
-                    fileExtension = source.extension,
-                    transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
-                    ui = uiStrings,
-                ),
-            )
-        }
+        // Transcoding (local or remote) runs backend-side with no prior page loaded, so render the
+        // loading shell directly rather than pushing a state change into a page that may not exist yet.
+        htmlLoader.load(
+            PlayerConfig(
+                state = "loading",
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
+                ui = uiStrings,
+            ),
+        )
         submit { runTranscode() }
     }
 
@@ -160,16 +160,21 @@ class MediaLoader(
                     }
                 }
             }
-            if (!bridge.disposed) {
+            if (bridge.disposed) {
+                temp.delete()
+            } else {
                 val url = serve(temp)
                 bridge.mediaReady(url)
                 armLoadWatchdog(url)
             }
         } catch (_: TranscodeUnavailable) {
+            temp.delete()
             showTranscodingError()
         } catch (e: TranscodeFailure) {
+            temp.delete()
             if (!bridge.disposed) bridge.showError(e.message ?: JetPlayBundle.message("error.unknown"))
         } catch (e: Exception) {
+            temp.delete()
             showLoadError(e.message)
         }
     }
@@ -191,10 +196,22 @@ class MediaLoader(
             armLoadWatchdog(url)
             return
         }
-        // SPLIT MODE: pull bytes from backend into a temp file, then serve.
+        // SPLIT MODE: pull bytes from backend into a temp file, then serve. Show a loading shell up
+        // front so the streaming RPC doesn't leave the tab on a blank Chromium page.
+        htmlLoader.load(
+            PlayerConfig(
+                state = "loading",
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                ui = uiStrings,
+            ),
+        )
         submit {
             val temp = streamToTemp { } ?: return@submit
-            if (!bridge.disposed) {
+            if (bridge.disposed) {
+                temp.delete()
+            } else {
                 val url = serve(temp)
                 htmlLoader.load(
                     PlayerConfig(
@@ -213,23 +230,33 @@ class MediaLoader(
     /** Streams the source bytes from the backend into a temp file. Returns null on failure (error surfaced). */
     private fun streamToTemp(onProgress: (Long) -> Unit): File? {
         val temp = File.createTempFile("jetplay-", ".${source.extension}").apply { deleteOnExit() }
-        return try {
+        val written = try {
             runBlocking {
                 val api = MediaAccessor.getInstance()
-                var written = 0L
+                var bytes = 0L
                 temp.outputStream().use { out ->
                     api.streamFileBytes(fileId, projectId).collect { chunk ->
                         out.write(chunk)
-                        written += chunk.size
-                        onProgress(written)
+                        bytes += chunk.size
+                        onProgress(bytes)
                     }
                 }
+                bytes
             }
-            temp
         } catch (e: Exception) {
+            temp.delete()
             showLoadError(e.message)
-            null
+            return null
         }
+        // The backend emits an empty flow (no bytes, no error) when it can't resolve the file
+        // (e.g. a non-LocalFileSystem VirtualFile). Serving the 0-byte temp would hand the player
+        // a permanently broken URL with no diagnosable failure — surface an explicit error instead.
+        if (written == 0L) {
+            temp.delete()
+            showLoadError(JetPlayBundle.message("error.empty"))
+            return null
+        }
+        return temp
     }
 
     private fun reportDownloadProgress(bytes: Long) {
