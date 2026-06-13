@@ -27,3 +27,9 @@ val buildPlayerUi by tasks.registering(Exec::class) {
 tasks.processResources {
     dependsOn(buildPlayerUi)
 }
+
+// Align the content-module jar name with the module id ("lib/modules/<moduleId>.jar") so the verifier and
+// platform resolve the descriptor instead of falling back to scanning every bundled jar.
+tasks.named<org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask>("composedJar") {
+    archiveBaseName.set("dev.twango.jetplay.frontend")
+}

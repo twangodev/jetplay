@@ -112,34 +112,15 @@ intellijPlatform {
     }
 
     pluginVerification {
-        // Split mode requires @ApiStatus.Internal RPC APIs (RemoteApiProviderService, the remoteApiProvider EP,
-        // ProjectId/VirtualFileId) that have no stable equivalent, so internal/experimental usage can't gate the
-        // build; keep failing on real binary incompatibilities and invalid plugin structure.
+        // Default gating set is [COMPATIBILITY_PROBLEMS, INTERNAL_API_USAGES, OVERRIDE_ONLY_API_USAGES].
+        // Drop only INTERNAL_API_USAGES: split mode's RPC stack (RemoteApiProviderService, the remoteApiProvider
+        // EP, ProjectId/VirtualFileId) is @ApiStatus.Internal with no stable equivalent. The javacv missing-package
+        // problems that previously forced externalPrefixes are gone now that the content-module jars are named to
+        // match their module ids (see each subproject's composedJar override) — the verifier resolves the
+        // descriptors and no longer falls back to scanning javacv.
         failureLevel = listOf(
             VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
-            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
-        )
-        // javacv (backend, ffmpeg only) bundles optional capture/vision frame-grabbers we exclude from the deps;
-        // mark those packages external so the verifier stops reading javacv's unused references to them as
-        // missing-package compatibility problems.
-        externalPrefixes = listOf(
-            "org.bytedeco.opencv",
-            "org.bytedeco.librealsense",
-            "org.bytedeco.librealsense2",
-            "org.bytedeco.videoinput",
-            "org.bytedeco.flycapture",
-            "org.bytedeco.libdc1394",
-            "org.bytedeco.libfreenect",
-            "org.bytedeco.libfreenect2",
-            "org.bytedeco.artoolkitplus",
-            "org.bytedeco.flandmark",
-            "org.bytedeco.leptonica",
-            "org.bytedeco.tesseract",
-            "org.opencv",
-            "javafx",
-            "com.badlogic",
-            "com.jogamp",
-            "org.apache.maven",
+            VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
         )
         ides {
             val pinned = providers.gradleProperty("verifierIde").orNull

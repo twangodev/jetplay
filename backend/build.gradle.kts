@@ -39,3 +39,10 @@ dependencies {
     implementation("org.bytedeco:javacpp:1.5.13:macosx-arm64")
     implementation("org.bytedeco:javacpp:1.5.13:windows-x86_64")
 }
+
+// IPGP names the content-module jar "<rootProject>.<module>" (jetplay.backend), but the platform and the
+// plugin verifier resolve content modules by "lib/modules/<moduleId>.jar". Align the jar name with the module
+// id so the descriptor resolves instead of falling back to scanning every bundled jar (incl. javacv).
+tasks.named<org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask>("composedJar") {
+    archiveBaseName.set("dev.twango.jetplay.backend")
+}
