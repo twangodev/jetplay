@@ -1,8 +1,11 @@
+@file:Suppress("UnstableApiUsage")
+
 package dev.twango.jetplay.rpc
 
 import com.intellij.ide.vfs.VirtualFileId
 import com.intellij.ide.vfs.virtualFile
 import com.intellij.platform.project.ProjectId
+import com.intellij.platform.project.findProjectOrNull
 import dev.twango.jetplay.media.MediaInfo
 import dev.twango.jetplay.transcode.FfmpegAvailability
 import dev.twango.jetplay.transcode.MediaInfoExtractor
@@ -21,12 +24,16 @@ private const val CHUNK_BYTES = 1 shl 20 // 1 MB
 
 class MediaAccessorImpl : MediaAccessor {
 
-    private fun resolveFile(fileId: VirtualFileId): File? = fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
-        runCatching { vf.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile }
+    // Resolve only within a live project: an unresolvable projectId means a stale or out-of-context RPC caller.
+    private fun resolveFile(fileId: VirtualFileId, projectId: ProjectId): File? {
+        if (projectId.findProjectOrNull() == null) return null
+        return fileId.virtualFile()?.takeIf { it.isValid }?.let { vf ->
+            runCatching { vf.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile }
+        }
     }
 
     override suspend fun streamFileBytes(fileId: VirtualFileId, projectId: ProjectId): Flow<ByteArray> = flow {
-        val file = resolveFile(fileId) ?: return@flow
+        val file = resolveFile(fileId, projectId) ?: return@flow
         RandomAccessFile(file, "r").use { raf ->
             val buf = ByteArray(CHUNK_BYTES)
             while (true) {
@@ -38,28 +45,30 @@ class MediaAccessorImpl : MediaAccessor {
     }.flowOn(Dispatchers.IO)
 
     override suspend fun fileLength(fileId: VirtualFileId, projectId: ProjectId): Long =
-        resolveFile(fileId)?.length() ?: -1L
+        withContext(Dispatchers.IO) { resolveFile(fileId, projectId)?.length() ?: -1L }
 
-    override suspend fun readRange(fileId: VirtualFileId, projectId: ProjectId, offset: Long, length: Int): ByteArray {
-        val file = resolveFile(fileId) ?: return ByteArray(0)
-        RandomAccessFile(file, "r").use { raf ->
-            raf.seek(offset)
-            val out = ByteArray(length)
-            // A single raf.read() may return fewer bytes than requested even when more remain
-            // (JDK contract); loop until the buffer is full or EOF is hit.
-            var total = 0
-            while (total < length) {
-                val n = raf.read(out, total, length - total)
-                if (n < 0) break
-                total += n
-            }
-            return when (total) {
-                0 -> ByteArray(0)
-                length -> out
-                else -> out.copyOf(total)
+    override suspend fun readRange(fileId: VirtualFileId, projectId: ProjectId, offset: Long, length: Int): ByteArray =
+        withContext(Dispatchers.IO) {
+            if (offset < 0 || length <= 0) return@withContext ByteArray(0)
+            val file = resolveFile(fileId, projectId) ?: return@withContext ByteArray(0)
+            RandomAccessFile(file, "r").use { raf ->
+                raf.seek(offset)
+                val out = ByteArray(length)
+                // A single raf.read() may return fewer bytes than requested even when more remain
+                // (JDK contract); loop until the buffer is full or EOF is hit.
+                var total = 0
+                while (total < length) {
+                    val n = raf.read(out, total, length - total)
+                    if (n < 0) break
+                    total += n
+                }
+                when (total) {
+                    0 -> ByteArray(0)
+                    length -> out
+                    else -> out.copyOf(total)
+                }
             }
         }
-    }
 
     override suspend fun transcodeFile(fileId: VirtualFileId, projectId: ProjectId): Flow<TranscodeEvent> =
         channelFlow {
@@ -67,7 +76,7 @@ class MediaAccessorImpl : MediaAccessor {
                 send(TranscodeEvent.Unavailable)
                 return@channelFlow
             }
-            val input = resolveFile(fileId) ?: run {
+            val input = resolveFile(fileId, projectId) ?: run {
                 send(TranscodeEvent.Failed("source unavailable"))
                 return@channelFlow
             }
@@ -98,15 +107,17 @@ class MediaAccessorImpl : MediaAccessor {
             send(TranscodeEvent.Done)
         }
 
-    override suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double> {
-        if (!FfmpegAvailability.available) return emptyList()
-        val file = resolveFile(fileId) ?: return emptyList()
-        return runCatching { WaveformExtractor.extract(file) }.getOrDefault(emptyList())
-    }
+    override suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double> =
+        withContext(Dispatchers.IO) {
+            if (!FfmpegAvailability.available) return@withContext emptyList()
+            val file = resolveFile(fileId, projectId) ?: return@withContext emptyList()
+            runCatching { WaveformExtractor.extract(file) }.getOrDefault(emptyList())
+        }
 
-    override suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo? {
-        if (!FfmpegAvailability.available) return null
-        val file = resolveFile(fileId) ?: return null
-        return runCatching { MediaInfoExtractor.extract(file) }.getOrNull()
-    }
+    override suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo? =
+        withContext(Dispatchers.IO) {
+            if (!FfmpegAvailability.available) return@withContext null
+            val file = resolveFile(fileId, projectId) ?: return@withContext null
+            runCatching { MediaInfoExtractor.extract(file) }.getOrNull()
+        }
 }
