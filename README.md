@@ -7,7 +7,7 @@
 <!-- Plugin description -->
 Audio and video playback for JetBrains IDEs, powered by JCEF and FFmpeg.
 
-Supported formats include MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, and 20+ more.
+Supported formats include MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, and many more.
 <!-- Plugin description end -->
 
 ## Format Support Matrix
