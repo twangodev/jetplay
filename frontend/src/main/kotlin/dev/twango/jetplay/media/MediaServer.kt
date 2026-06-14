@@ -168,9 +168,11 @@ object MediaServer {
                 log.warn("streamRange: source empty at offset=$offset, $remaining bytes undelivered")
                 break
             }
-            out.write(bytes)
-            offset += bytes.size
-            remaining -= bytes.size
+            // Never write past the declared count even if a source over-reads (would corrupt a 206 body).
+            val n = minOf(bytes.size.toLong(), remaining).toInt()
+            out.write(bytes, 0, n)
+            offset += n
+            remaining -= n
         }
     }
 
