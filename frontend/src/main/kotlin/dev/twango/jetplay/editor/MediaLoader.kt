@@ -5,11 +5,11 @@ import com.intellij.ide.vfs.rpcId
 import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.platform.project.projectId
-import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.platform.util.coroutines.childScope
 import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.JetPlayConstants
 import dev.twango.jetplay.browser.PlayerBridge
@@ -23,13 +23,15 @@ import dev.twango.jetplay.media.RemoteRangeByteSource
 import dev.twango.jetplay.media.contentTypeForExtension
 import dev.twango.jetplay.rpc.MediaAccessor
 import dev.twango.jetplay.rpc.TranscodeEvent
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.Future
-import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 
 class MediaLoader(
     private val project: Project,
@@ -38,16 +40,16 @@ class MediaLoader(
     private val htmlLoader: PlayerHtmlLoader,
 ) {
 
-    private val tasks = CopyOnWriteArrayList<Future<*>>()
+    private val scope = project.service<MediaCoroutineService>().scope.childScope("MediaLoader")
 
     // Loopback URLs to release on dispose.
     private val servedUrls = CopyOnWriteArrayList<String>()
 
     @Volatile
-    private var watchdog: ScheduledFuture<*>? = null
+    private var disposed = false
 
     @Volatile
-    private var disposed = false
+    private var watchdog: Job? = null
 
     // Registers [url] for release on dispose; returns null (already released) if disposal won the race.
     private fun registerServed(url: String): String? {
@@ -59,14 +61,14 @@ class MediaLoader(
         return url
     }
 
-    /** JCEF may never reach the loopback server; error out if the token is unfetched by the deadline. */
     private fun armLoadWatchdog(url: String) {
-        watchdog?.cancel(false)
-        watchdog = AppExecutorUtil.getAppScheduledExecutorService().schedule({
-            if (bridge.disposed || MediaServer.wasFetched(url)) return@schedule
+        watchdog?.cancel()
+        watchdog = scope.launch {
+            delay(LOAD_TIMEOUT_SECONDS * MILLIS_PER_SECOND)
+            if (bridge.disposed || MediaServer.wasFetched(url)) return@launch
             log.warn("Media load watchdog: $url served but never fetched after ${LOAD_TIMEOUT_SECONDS}s")
             bridge.showError(JetPlayBundle.message("error.load.timeout"))
-        }, LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        }
     }
 
     private val uiStrings = UiStrings(
@@ -92,9 +94,8 @@ class MediaLoader(
         if (source.isVideo || source.isRemote) return
         // Raw telephony codecs lack the demuxer hints to decode cleanly, risking a garbage waveform.
         if (source.extension.lowercase() in MediaClassification.rawAudioExtensions) return
-        submit {
-            if (bridge.disposed) return@submit
-            val bars = runBlocking { MediaAccessor.getInstance().extractWaveform(fileId, projectId) }
+        scope.launch {
+            val bars = MediaAccessor.getInstance().extractWaveform(fileId, projectId)
             if (bars.isNotEmpty() && !bridge.disposed) bridge.sendWaveform(bars)
         }
     }
@@ -102,9 +103,8 @@ class MediaLoader(
     private fun maybeSendMediaInfo() {
         if (source.isRemote) return
         if (source.extension.lowercase() in MediaClassification.rawAudioExtensions) return
-        submit {
-            if (bridge.disposed) return@submit
-            val info = runBlocking { MediaAccessor.getInstance().extractMediaInfo(fileId, projectId) }
+        scope.launch {
+            val info = MediaAccessor.getInstance().extractMediaInfo(fileId, projectId)
             if (info != null && !bridge.disposed) bridge.sendMediaInfo(info)
         }
     }
@@ -125,17 +125,17 @@ class MediaLoader(
                 ui = uiStrings,
             ),
         )
-        submit {
-            val len = runBlocking { MediaAccessor.getInstance().fileLength(fileId, projectId) }
+        scope.launch {
+            val len = MediaAccessor.getInstance().fileLength(fileId, projectId)
             if (len <= 0L) {
                 showLoadError(JetPlayBundle.message("error.empty"))
-                return@submit
+                return@launch
             }
-            if (bridge.disposed) return@submit
+            // The HTTP server thread calls this reader synchronously, so it bridges the suspend RPC with runBlocking.
             val remote = RemoteRangeByteSource(len, contentTypeForExtension(source.extension)) { offset, length ->
                 runBlocking { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
             }
-            val url = registerServed(MediaServer.serve(remote)) ?: return@submit
+            val url = registerServed(MediaServer.serve(remote)) ?: return@launch
             loadPlayer(url)
         }
     }
@@ -165,46 +165,46 @@ class MediaLoader(
                 ui = uiStrings,
             ),
         )
-        submit { runTranscode() }
+        scope.launch { runTranscode() }
     }
 
-    private fun runTranscode() {
+    private suspend fun runTranscode() {
         val temp = File.createTempFile("jetplay-", ".webm").apply { deleteOnExit() }
+        var served = false
         try {
-            runBlocking {
-                val api = MediaAccessor.getInstance()
-                temp.outputStream().use { out ->
-                    api.transcodeFile(fileId, projectId).collect { event ->
-                        when (event) {
-                            is TranscodeEvent.Progress -> if (!bridge.disposed) bridge.updateProgress(event.percent)
-                            is TranscodeEvent.Chunk -> out.write(event.bytes)
-                            is TranscodeEvent.Failed -> throw TranscodeFailure(event.message)
-                            TranscodeEvent.Unavailable -> throw TranscodeUnavailable
-                            TranscodeEvent.Done -> Unit
-                        }
-                    }
-                }
+            val api = MediaAccessor.getInstance()
+            temp.outputStream().use { out ->
+                api.transcodeFile(fileId, projectId).collect { event -> writeTranscodeEvent(event, out) }
             }
-            if (bridge.disposed) {
-                temp.delete()
-            } else {
+            if (!bridge.disposed) {
                 val url = registerServed(MediaServer.serve(temp))
-                if (url == null) {
-                    temp.delete()
-                } else {
+                if (url != null) {
+                    served = true
                     bridge.mediaReady(url)
                     armLoadWatchdog(url)
                 }
             }
         } catch (_: TranscodeUnavailable) {
-            temp.delete()
             showTranscodingError()
         } catch (e: TranscodeFailure) {
-            temp.delete()
             if (!bridge.disposed) bridge.showError(e.message ?: JetPlayBundle.message("error.unknown"))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            temp.delete()
             showLoadError(e.message)
+        } finally {
+            // Once served, the browser owns the temp (cleaned on JVM exit); otherwise drop it now.
+            if (!served) temp.delete()
+        }
+    }
+
+    private fun writeTranscodeEvent(event: TranscodeEvent, out: java.io.OutputStream) {
+        when (event) {
+            is TranscodeEvent.Progress -> if (!bridge.disposed) bridge.updateProgress(event.percent)
+            is TranscodeEvent.Chunk -> out.write(event.bytes)
+            is TranscodeEvent.Failed -> throw TranscodeFailure(event.message)
+            TranscodeEvent.Unavailable -> throw TranscodeUnavailable
+            TranscodeEvent.Done -> Unit
         }
     }
 
@@ -242,14 +242,9 @@ class MediaLoader(
             .notify(project)
     }
 
-    private fun submit(block: () -> Unit) {
-        tasks.add(ApplicationManager.getApplication().executeOnPooledThread(block))
-    }
-
     fun dispose() {
         disposed = true
-        watchdog?.cancel(false)
-        tasks.forEach { it.cancel(true) }
+        scope.cancel()
         servedUrls.forEach(MediaServer::release)
     }
 
@@ -259,5 +254,6 @@ class MediaLoader(
     companion object {
         private val log = Logger.getInstance(MediaLoader::class.java)
         private const val LOAD_TIMEOUT_SECONDS = 20L
+        private const val MILLIS_PER_SECOND = 1000L
     }
 }
