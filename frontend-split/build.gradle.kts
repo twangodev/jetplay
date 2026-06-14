@@ -18,7 +18,7 @@ dependencies {
     compileOnly(files(Callable {
         val ideHome = idesDir.listFiles()?.sortedByDescending { it.name }?.firstOrNull()
             ?: error("No resolved IDE under $idesDir")
-        listOf(
+        val jars = listOf(
             ideHome.resolve("plugins/cwm-plugin/lib/frontend-split/rd-client.jar"),
             ideHome.resolve("plugins/cwm-plugin/lib/frontend-split/frontend-split.jar"),
             ideHome.resolve("lib/intellij.rd.platform.jar"),
@@ -26,6 +26,13 @@ dependencies {
             ideHome.resolve("lib/intellij.rd.ide.model.generated.jar"),
             ideHome.resolve("lib/intellij.libraries.rd.core.jar"),
         )
+        // Fail early with a clear message if the IDE layout moved these internal jars.
+        val missing = jars.filterNot { it.exists() }
+        require(missing.isEmpty()) {
+            "Missing IntelliJ internal jars for :frontend-split under $ideHome:\n" +
+                missing.joinToString("\n") { "  $it" }
+        }
+        jars
     }))
 
     testImplementation(libs.junit)
