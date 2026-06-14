@@ -5,6 +5,9 @@ import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import dev.twango.jetplay.media.MediaInfo
+import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
+import org.cef.handler.CefLoadHandlerAdapter
 import javax.swing.SwingUtilities
 
 class PlayerBridge(private val browser: JBCefBrowser) {
@@ -13,6 +16,10 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     var disposed = false
         private set
 
+    // JCEF drops executeJavaScript until the page finishes loading, so queue calls and flush them on load-end.
+    private var pageLoaded = false
+    private val pendingJs = mutableListOf<String>()
+
     val openLinkQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
         addHandler { url ->
             BrowserUtil.browse(url)
@@ -20,15 +27,42 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         }
     }
 
-    fun executeJs(js: String) {
-        if (!disposed) {
-            SwingUtilities.invokeLater {
-                if (!disposed) {
-                    browser.cefBrowser.executeJavaScript(js, "", 0)
+    init {
+        browser.jbCefClient.addLoadHandler(
+            object : CefLoadHandlerAdapter() {
+                override fun onLoadEnd(b: CefBrowser?, frame: CefFrame?, httpStatusCode: Int) {
+                    if (frame?.isMain != true) return
+                    val queued = synchronized(pendingJs) {
+                        pageLoaded = true
+                        pendingJs.toList().also { pendingJs.clear() }
+                    }
+                    queued.forEach(::runJs)
                 }
+            },
+            browser.cefBrowser,
+        )
+    }
+
+    fun executeJs(js: String) {
+        if (disposed) return
+        val runNow = synchronized(pendingJs) {
+            if (pageLoaded) {
+                true
+            } else {
+                pendingJs.add(js)
+                false
             }
         }
+        if (runNow) runJs(js)
     }
+
+    private fun runJs(js: String) {
+        SwingUtilities.invokeLater {
+            if (!disposed) browser.cefBrowser.executeJavaScript(js, "", 0)
+        }
+    }
+
+    fun isShowing(): Boolean = !disposed && browser.component.isShowing
 
     // Stash before notifying: a fast transcode can beat page load.
     fun updateProgress(percent: Double) =
@@ -54,7 +88,13 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         executeJs("window.__jetplayMediaInfo=$json;if(window.jetplayMediaInfo)window.jetplayMediaInfo(window.__jetplayMediaInfo)")
     }
 
-    fun loadHtml(html: String) = browser.loadHTML(html)
+    fun loadHtml(html: String) {
+        synchronized(pendingJs) {
+            pageLoaded = false
+            pendingJs.clear()
+        }
+        browser.loadHTML(html)
+    }
 
     fun dispose() {
         disposed = true

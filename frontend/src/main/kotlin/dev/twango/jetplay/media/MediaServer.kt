@@ -72,7 +72,6 @@ object MediaServer {
     }
 
     private fun handle(exchange: HttpExchange) {
-        // Per-request trace: the only window into serving when playback silently stalls on a remote host.
         if (log.isDebugEnabled) {
             log.debug("${exchange.requestMethod} ${exchange.requestURI.path} range=${exchange.requestHeaders.getFirst("Range")}")
         }

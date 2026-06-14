@@ -21,7 +21,12 @@ class MediaFileEditorProvider :
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
         if (!canRenderJcefHere()) {
-            log.warn("JCEF unavailable or on the Remote Dev host; opening ${file.name} in the fallback editor")
+            if (AppMode.isRemoteDevHost()) {
+                // Expected: the host has no display; the client renders the player via the rdclient handler.
+                log.debug("On the Remote Dev host; the client renders ${file.name}")
+            } else {
+                log.warn("JCEF unavailable; opening ${file.name} in the fallback editor")
+            }
             return MediaErrorEditor(file, JetPlayBundle.message("error.jcef.unavailable"))
         }
         StarReminder.maybeShow(project)

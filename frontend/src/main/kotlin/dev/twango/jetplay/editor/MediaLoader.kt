@@ -51,7 +51,7 @@ class MediaLoader(
     @Volatile
     private var watchdog: Job? = null
 
-    // Registers [url] for release on dispose; returns null (already released) if disposal won the race.
+    // null if disposal already released the URL (lost the race with dispose).
     private fun registerServed(url: String): String? {
         servedUrls.add(url)
         if (disposed) {
@@ -66,6 +66,8 @@ class MediaLoader(
         watchdog = scope.launch {
             delay(LOAD_TIMEOUT_SECONDS * MILLIS_PER_SECOND)
             if (bridge.disposed || MediaServer.wasFetched(url)) return@launch
+            // A backgrounded tab never loads its JCEF page, so it never fetches; only flag a stall the user can see.
+            if (!bridge.isShowing()) return@launch
             log.warn("Media load watchdog: $url served but never fetched after ${LOAD_TIMEOUT_SECONDS}s")
             bridge.showError(JetPlayBundle.message("error.load.timeout"))
         }
@@ -136,7 +138,9 @@ class MediaLoader(
                 runBlocking { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
             }
             val url = registerServed(MediaServer.serve(remote)) ?: return@launch
-            loadPlayer(url)
+            // Push the URL in-page rather than a second loadHTML, which would race the shell's load.
+            bridge.mediaReady(url)
+            armLoadWatchdog(url)
         }
     }
 
