@@ -46,7 +46,18 @@ class MediaLoader(
     @Volatile
     private var watchdog: ScheduledFuture<*>? = null
 
-    private fun serve(file: File): String = MediaServer.serve(file).also { servedUrls.add(it) }
+    @Volatile
+    private var disposed = false
+
+    // Registers [url] for release on dispose; returns null (already released) if disposal won the race.
+    private fun registerServed(url: String): String? {
+        servedUrls.add(url)
+        if (disposed) {
+            MediaServer.release(url)
+            return null
+        }
+        return url
+    }
 
     /** JCEF may never reach the loopback server; error out if the token is unfetched by the deadline. */
     private fun armLoadWatchdog(url: String) {
@@ -101,7 +112,7 @@ class MediaLoader(
     private fun playFromSource() {
         val local = source.localFileOrNull()
         if (local != null) {
-            val url = serve(local)
+            val url = registerServed(MediaServer.serve(local)) ?: return
             loadPlayer(url)
             return
         }
@@ -124,7 +135,7 @@ class MediaLoader(
             val remote = RemoteRangeByteSource(len, contentTypeForExtension(source.extension)) { offset, length ->
                 runBlocking { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
             }
-            val url = MediaServer.serve(remote).also { servedUrls.add(it) }
+            val url = registerServed(MediaServer.serve(remote)) ?: return@submit
             loadPlayer(url)
         }
     }
@@ -177,9 +188,13 @@ class MediaLoader(
             if (bridge.disposed) {
                 temp.delete()
             } else {
-                val url = serve(temp)
-                bridge.mediaReady(url)
-                armLoadWatchdog(url)
+                val url = registerServed(MediaServer.serve(temp))
+                if (url == null) {
+                    temp.delete()
+                } else {
+                    bridge.mediaReady(url)
+                    armLoadWatchdog(url)
+                }
             }
         } catch (_: TranscodeUnavailable) {
             temp.delete()
@@ -232,6 +247,7 @@ class MediaLoader(
     }
 
     fun dispose() {
+        disposed = true
         watchdog?.cancel(false)
         tasks.forEach { it.cancel(true) }
         servedUrls.forEach(MediaServer::release)
