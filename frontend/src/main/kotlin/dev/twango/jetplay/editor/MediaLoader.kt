@@ -74,7 +74,6 @@ class MediaLoader(
     }
 
     private val uiStrings = UiStrings(
-        downloadingLabel = JetPlayBundle.message("ui.downloading.label"),
         transcodingLabel = JetPlayBundle.message("ui.transcoding.label"),
         transcodingTip = JetPlayBundle.message("ui.transcoding.tip"),
         errorTitle = JetPlayBundle.message("ui.error.title"),

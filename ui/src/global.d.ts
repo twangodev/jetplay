@@ -28,21 +28,18 @@ declare global {
       fileName?: string
       fileExtension?: string
       isVideo?: boolean
-      state?: 'downloading' | 'loading' | 'ready' | 'error'
+      state?: 'loading' | 'ready' | 'error'
       errorMessage?: string
       transcodingReason?: string
-      downloadingReason?: string
       waveform?: number[]
       mediaInfo?: MediaInfo
       ui?: {
-        downloadingLabel?: string
         transcodingLabel?: string
         transcodingTip?: string
         errorTitle?: string
       }
     }
     jetplayUpdateProgress?: (percent: number) => void
-    jetplayUpdateDownloadProgress?: (percent: number) => void
     jetplayStartTranscoding?: () => void
     jetplayReady?: (mediaUrl: string) => void
     jetplayError?: (message: string) => void
@@ -51,9 +48,8 @@ declare global {
     // Buffered state pushes (read on mount so an early transition isn't dropped).
     __jetplayReadyUrl?: string
     __jetplayError?: string
-    __jetplayState?: 'downloading' | 'loading' | 'ready' | 'error'
+    __jetplayState?: 'loading' | 'ready' | 'error'
     __jetplayProgress?: number
-    __jetplayDownloadProgress?: number
     jetplayMediaInfo?: (info: MediaInfo) => void
     __jetplayMediaInfo?: MediaInfo
     jetplayOpenLink?: (url: string) => void

@@ -68,9 +68,6 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     fun updateProgress(percent: Double) =
         executeJs("window.__jetplayProgress=$percent;window.jetplayUpdateProgress?.($percent)")
 
-    fun updateDownloadProgress(percent: Double) =
-        executeJs("window.__jetplayDownloadProgress=$percent;window.jetplayUpdateDownloadProgress?.($percent)")
-
     fun mediaReady(url: String) =
         executeJs("window.__jetplayReadyUrl='${escapeJs(url)}';window.jetplayReady?.('${escapeJs(url)}')")
 

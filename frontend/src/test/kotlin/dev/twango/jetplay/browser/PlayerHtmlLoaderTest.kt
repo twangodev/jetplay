@@ -80,30 +80,16 @@ class PlayerHtmlLoaderTest {
     }
 
     @Test
-    fun includesDownloadingReasonWhenNotEmpty() {
-        val result = buildScript(PlayerConfig(downloadingReason = "Remote file"))
-        assertTrue(result.contains("downloadingReason: 'Remote file'"))
-    }
-
-    @Test
-    fun omitsDownloadingReasonWhenEmpty() {
-        val result = buildScript(PlayerConfig(downloadingReason = ""))
-        assertFalse(result.contains("downloadingReason:"))
-    }
-
-    @Test
     fun includesUiStrings() {
         val result = buildScript(
             PlayerConfig(
                 ui = UiStrings(
-                    downloadingLabel = "Loading...",
                     transcodingLabel = "Converting...",
                     transcodingTip = "Use webm",
                     errorTitle = "Error!",
                 ),
             ),
         )
-        assertTrue(result.contains("downloadingLabel: 'Loading...'"))
         assertTrue(result.contains("transcodingLabel: 'Converting...'"))
         assertTrue(result.contains("transcodingTip: 'Use webm'"))
         assertTrue(result.contains("errorTitle: 'Error!'"))
