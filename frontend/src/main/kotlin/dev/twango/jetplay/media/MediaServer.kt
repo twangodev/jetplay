@@ -4,11 +4,9 @@ import com.intellij.openapi.diagnostic.Logger
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.io.File
-import java.io.RandomAccessFile
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.URI
-import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -22,7 +20,7 @@ import java.util.concurrent.Executors
 object MediaServer {
 
     private val log = Logger.getInstance(MediaServer::class.java)
-    private val files = ConcurrentHashMap<String, File>()
+    private val files = ConcurrentHashMap<String, MediaByteSource>()
 
     // Tokens the browser actually fetched; a served-but-never-fetched token means the loopback URL is unreachable.
     private val fetched = ConcurrentHashMap.newKeySet<String>()
@@ -38,12 +36,13 @@ object MediaServer {
     @Volatile
     private var server: HttpServer? = null
 
-    /** Registers [file] and returns a loopback URL the browser can fetch + play. */
+    fun serve(file: File): String = serve(FileByteSource(file))
+
     @Synchronized
-    fun serve(file: File): String {
+    fun serve(source: MediaByteSource): String {
         val srv = server ?: start().also { server = it }
         val token = UUID.randomUUID().toString().replace("-", "")
-        files[token] = file
+        files[token] = source
         return "http://127.0.0.1:${srv.address.port}/$token"
     }
 
@@ -98,26 +97,24 @@ object MediaServer {
             }
 
             val token = exchange.requestURI.path.trimStart('/')
-            val file = files[token]
-            if (file == null || !file.isFile) {
-                // A live editor requesting an unknown/vanished token signals a load-path failure, not a benign 404.
-                log.warn("Media request for missing file: ${exchange.requestURI.path} (registered=${file != null})")
+            val source = files[token]
+            val length = source?.length
+            if (source == null || length == null) {
+                log.warn("Media request for missing source: ${exchange.requestURI.path} (registered=${source != null})")
                 exchange.sendResponseHeaders(HTTP_NOT_FOUND, -1)
                 return
             }
-            // First reachable fetch: the watchdog reads this to tell a stalled load from a playing one.
             if (fetched.add(token)) log.debug("First media fetch for token $token")
 
-            headers.add("Content-Type", contentType(file))
+            headers.add("Content-Type", source.contentType ?: "application/octet-stream")
             headers.add("Accept-Ranges", "bytes")
-            val length = file.length()
             val singleByteRange = exchange.requestHeaders.getFirst("Range")
                 ?.takeIf { it.startsWith("bytes=") && !it.contains(',') }
             if (singleByteRange != null && length > 0) {
-                writeRange(exchange, file, length, singleByteRange)
+                writeRange(exchange, source, length, singleByteRange)
             } else {
                 exchange.sendResponseHeaders(HTTP_OK, if (length == 0L) -1 else length)
-                file.inputStream().use { it.copyTo(exchange.responseBody) }
+                streamRange(source, 0, length, exchange.responseBody)
             }
         } catch (e: Exception) {
             log.warn("Media server request failed", e)
@@ -136,7 +133,7 @@ object MediaServer {
         return name.equals("127.0.0.1", true) || name.equals("localhost", true) || name.equals("::1", true)
     }
 
-    private fun writeRange(exchange: HttpExchange, file: File, length: Long, range: String) {
+    private fun writeRange(exchange: HttpExchange, source: MediaByteSource, length: Long, range: String) {
         val spec = range.removePrefix("bytes=").split('-', limit = 2)
         val startTok = spec.getOrNull(0)?.trim().orEmpty()
         val endTok = spec.getOrNull(1)?.trim().orEmpty()
@@ -144,7 +141,6 @@ object MediaServer {
         val start: Long
         val end: Long
         if (startTok.isEmpty()) {
-            // Suffix range "bytes=-N": the LAST n bytes.
             val n = endTok.toLongOrNull()
             if (n == null || n <= 0) return send416(exchange, length)
             start = maxOf(0, length - n)
@@ -159,16 +155,22 @@ object MediaServer {
         val count = end - start + 1
         exchange.responseHeaders.add("Content-Range", "bytes $start-$end/$length")
         exchange.sendResponseHeaders(HTTP_PARTIAL_CONTENT, count)
-        RandomAccessFile(file, "r").use { raf ->
-            raf.seek(start)
-            val buffer = ByteArray(CHUNK)
-            var remaining = count
-            while (remaining > 0) {
-                val read = raf.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
-                if (read == -1) break
-                exchange.responseBody.write(buffer, 0, read)
-                remaining -= read
+        streamRange(source, start, count, exchange.responseBody)
+    }
+
+    private fun streamRange(source: MediaByteSource, start: Long, count: Long, out: java.io.OutputStream) {
+        var offset = start
+        var remaining = count
+        while (remaining > 0) {
+            val want = minOf(CHUNK.toLong(), remaining).toInt()
+            val bytes = source.read(offset, want)
+            if (bytes.isEmpty()) {
+                log.warn("streamRange: source empty at offset=$offset, $remaining bytes undelivered")
+                break
             }
+            out.write(bytes)
+            offset += bytes.size
+            remaining -= bytes.size
         }
     }
 
@@ -176,18 +178,4 @@ object MediaServer {
         exchange.responseHeaders.add("Content-Range", "bytes */$length")
         exchange.sendResponseHeaders(HTTP_RANGE_NOT_SATISFIABLE, -1)
     }
-
-    private fun contentType(file: File): String = runCatching { Files.probeContentType(file.toPath()) }.getOrNull()
-        ?: when (file.extension.lowercase()) {
-            "mp3" -> "audio/mpeg"
-            "ogg", "oga" -> "audio/ogg"
-            "opus" -> "audio/opus"
-            "wav" -> "audio/wav"
-            "flac" -> "audio/flac"
-            "m4a", "aac" -> "audio/mp4"
-            "webm" -> "video/webm"
-            "mp4", "m4v" -> "video/mp4"
-            "ogv" -> "video/ogg"
-            else -> "application/octet-stream"
-        }
 }

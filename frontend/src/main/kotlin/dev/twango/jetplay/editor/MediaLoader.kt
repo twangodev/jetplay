@@ -19,6 +19,8 @@ import dev.twango.jetplay.browser.UiStrings
 import dev.twango.jetplay.media.EditorMediaSource
 import dev.twango.jetplay.media.MediaClassification
 import dev.twango.jetplay.media.MediaServer
+import dev.twango.jetplay.media.RemoteRangeByteSource
+import dev.twango.jetplay.media.contentTypeForExtension
 import dev.twango.jetplay.rpc.MediaAccessor
 import dev.twango.jetplay.rpc.TranscodeEvent
 import kotlinx.coroutines.flow.collect
@@ -67,11 +69,9 @@ class MediaLoader(
     private val projectId by lazy { project.projectId() }
 
     fun load() {
-        // Transcoding runs backend-side and re-reads the source, so it takes precedence over download.
         when {
             source.needsTranscoding -> startTranscoding()
-            source.isRemote -> startDownload()
-            else -> playDirectly()
+            else -> playFromSource()
         }
         maybeSendWaveform()
         maybeSendMediaInfo()
@@ -98,27 +98,48 @@ class MediaLoader(
         }
     }
 
-    private fun startDownload() {
+    private fun playFromSource() {
+        val local = source.localFileOrNull()
+        if (local != null) {
+            val url = serve(local)
+            loadPlayer(url)
+            return
+        }
         htmlLoader.load(
             PlayerConfig(
-                state = "downloading",
+                state = "loading",
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 fileExtension = source.extension,
-                downloadingReason = JetPlayBundle.message("downloading.reason"),
                 ui = uiStrings,
             ),
         )
         submit {
-            val temp = streamToTemp(::reportDownloadProgress) ?: return@submit
-            if (bridge.disposed) {
-                temp.delete()
+            val len = runBlocking { MediaAccessor.getInstance().fileLength(fileId, projectId) }
+            if (len <= 0L) {
+                showLoadError(JetPlayBundle.message("error.empty"))
                 return@submit
             }
-            val url = serve(temp)
-            bridge.mediaReady(url)
-            armLoadWatchdog(url)
+            if (bridge.disposed) return@submit
+            val remote = RemoteRangeByteSource(len, contentTypeForExtension(source.extension)) { offset, length ->
+                runBlocking { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
+            }
+            val url = MediaServer.serve(remote).also { servedUrls.add(it) }
+            loadPlayer(url)
         }
+    }
+
+    private fun loadPlayer(url: String) {
+        htmlLoader.load(
+            PlayerConfig(
+                isVideo = source.isVideo,
+                fileName = source.fileName,
+                fileExtension = source.extension,
+                mediaUrl = url,
+                ui = uiStrings,
+            ),
+        )
+        armLoadWatchdog(url)
     }
 
     private fun startTranscoding() {
@@ -172,88 +193,6 @@ class MediaLoader(
         }
     }
 
-    private fun playDirectly() {
-        val local = source.localFileOrNull()
-        if (local != null) {
-            val url = serve(local)
-            htmlLoader.load(
-                PlayerConfig(
-                    isVideo = source.isVideo,
-                    fileName = source.fileName,
-                    fileExtension = source.extension,
-                    mediaUrl = url,
-                    ui = uiStrings,
-                ),
-            )
-            armLoadWatchdog(url)
-            return
-        }
-        // Show a loading shell up front so the streaming RPC doesn't leave the tab on a blank page.
-        htmlLoader.load(
-            PlayerConfig(
-                state = "loading",
-                isVideo = source.isVideo,
-                fileName = source.fileName,
-                fileExtension = source.extension,
-                ui = uiStrings,
-            ),
-        )
-        submit {
-            val temp = streamToTemp { } ?: return@submit
-            if (bridge.disposed) {
-                temp.delete()
-            } else {
-                val url = serve(temp)
-                htmlLoader.load(
-                    PlayerConfig(
-                        isVideo = source.isVideo,
-                        fileName = source.fileName,
-                        fileExtension = source.extension,
-                        mediaUrl = url,
-                        ui = uiStrings,
-                    ),
-                )
-                armLoadWatchdog(url)
-            }
-        }
-    }
-
-    /** Streams the source bytes from the backend into a temp file. Returns null on failure (error surfaced). */
-    private fun streamToTemp(onProgress: (Long) -> Unit): File? {
-        val temp = File.createTempFile("jetplay-", ".${source.extension}").apply { deleteOnExit() }
-        val written = try {
-            runBlocking {
-                val api = MediaAccessor.getInstance()
-                var bytes = 0L
-                temp.outputStream().use { out ->
-                    api.streamFileBytes(fileId, projectId).collect { chunk ->
-                        out.write(chunk)
-                        bytes += chunk.size
-                        onProgress(bytes)
-                    }
-                }
-                bytes
-            }
-        } catch (e: Exception) {
-            temp.delete()
-            showLoadError(e.message)
-            return null
-        }
-        // Backend emits an empty flow when it can't resolve the file; error out instead of serving 0 bytes.
-        if (written == 0L) {
-            temp.delete()
-            showLoadError(JetPlayBundle.message("error.empty"))
-            return null
-        }
-        return temp
-    }
-
-    private fun reportDownloadProgress(bytes: Long) {
-        if (bridge.disposed) return
-        val total = source.file.length
-        if (total > 0) bridge.updateDownloadProgress(bytes.toDouble() / total * PERCENT_SCALE)
-    }
-
     private fun showLoadError(raw: String?) {
         val msg = raw ?: JetPlayBundle.message("error.unknown")
         log.warn("media load failed: $msg")
@@ -303,7 +242,6 @@ class MediaLoader(
 
     companion object {
         private val log = Logger.getInstance(MediaLoader::class.java)
-        private const val PERCENT_SCALE = 100.0
         private const val LOAD_TIMEOUT_SECONDS = 20L
     }
 }

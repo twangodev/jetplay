@@ -1,0 +1,17 @@
+<idea-plugin>
+    <dependencies>
+        <!-- frontend.split pins this module to the JetBrains Client process only. -->
+        <module name="intellij.platform.frontend.split"/>
+        <module name="dev.twango.jetplay.frontend"/>
+        <module name="intellij.rd.client"/>
+        <module name="intellij.rd.platform"/>
+        <module name="intellij.rd.ui"/>
+        <module name="intellij.rd.ide.model.generated"/>
+    </dependencies>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <rdclient.fileEditorModelHandler
+            implementation="dev.twango.jetplay.editor.split.MediaFrontendEditorModelHandler"
+            order="first"/>
+    </extensions>
+</idea-plugin>

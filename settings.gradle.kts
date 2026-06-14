@@ -34,3 +34,4 @@ dependencyResolutionManagement {
 include("shared")
 include("frontend")
 include("backend")
+include("frontend-split")

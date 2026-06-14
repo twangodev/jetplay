@@ -6,6 +6,7 @@
     <content>
         <module name="dev.twango.jetplay.shared" loading="required"/>
         <module name="dev.twango.jetplay.frontend"/>
+        <module name="dev.twango.jetplay.frontend.split"/>
         <module name="dev.twango.jetplay.backend"/>
     </content>
 </idea-plugin>

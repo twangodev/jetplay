@@ -55,6 +55,7 @@ dependencies {
 
         pluginModule(implementation(project(":shared")))
         pluginModule(implementation(project(":frontend")))
+        pluginModule(implementation(project(":frontend-split")))
         pluginModule(implementation(project(":backend")))
     }
 }
@@ -65,7 +66,7 @@ changelog {
 }
 
 intellijPlatform {
-    splitMode = true
+    splitMode = providers.gradleProperty("splitMode").map { it.toBoolean() }.orElse(true)
     pluginInstallationTarget = SplitModeAware.PluginInstallationTarget.BOTH
 
     pluginConfiguration {
@@ -118,6 +119,8 @@ intellijPlatform {
         // problems that previously forced externalPrefixes are gone now that the content-module jars are named to
         // match their module ids (see each subproject's composedJar override) — the verifier resolves the
         // descriptors and no longer falls back to scanning javacv.
+        // Split mode's client editor adds @ApiStatus.Internal RD APIs
+        // (rdclient.*, intellij.rd.*) under the same INTERNAL_API_USAGES drop.
         failureLevel = listOf(
             VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
             VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,

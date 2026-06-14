@@ -1,5 +1,6 @@
 package dev.twango.jetplay.editor
 
+import com.intellij.idea.AppMode
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
@@ -19,15 +20,15 @@ class MediaFileEditorProvider :
     override fun accept(project: Project, file: VirtualFile): Boolean = file.fileType == MediaFileType.INSTANCE
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
-        // Without JCEF, show an explicit error rather than a pane that spins forever on a browser that never renders.
-        if (!JBCefApp.isSupported()) {
-            log.warn("JCEF unavailable; opening ${file.name} in fallback error editor")
+        if (!canRenderJcefHere()) {
+            log.warn("JCEF unavailable or on the Remote Dev host; opening ${file.name} in the fallback editor")
             return MediaErrorEditor(file, JetPlayBundle.message("error.jcef.unavailable"))
         }
-        val source = EditorMediaSource(file)
         StarReminder.maybeShow(project)
-        return MediaFileEditor(project, file, source)
+        return MediaFileEditor(project, file, EditorMediaSource(file))
     }
+
+    private fun canRenderJcefHere(): Boolean = !AppMode.isRemoteDevHost() && JBCefApp.isSupported()
 
     override fun getEditorTypeId(): String = "media-player"
 

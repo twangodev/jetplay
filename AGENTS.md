@@ -12,9 +12,9 @@ IntelliJ Platform plugin providing native audio/video playback in JetBrains IDEs
 
 ## Project Structure
 
-- `shared/`, `frontend/`, `backend/` — Plugin Model V2 content modules (shared types + RPC contract; frontend editor/JCEF player/loopback media server; backend ffmpeg + byte access), each under `<module>/src/main/kotlin/dev/twango/jetplay/`
+- `shared/`, `frontend/`, `frontend-split/`, `backend/` — Plugin Model V2 content modules, each under `<module>/src/main/kotlin/dev/twango/jetplay/`. `shared` (loads everywhere): shared types, RPC contract, i18n bundle. `frontend` (loads on the Remote Dev host **and** client): file type + editor provider + JCEF player + loopback media server; JCEF is guarded off on the host. `frontend-split` (JetBrains Client only): `rdclient.fileEditorModelHandler` that renders the player client-side in split mode. `backend` (host): ffmpeg + RPC byte/transcode access.
 - `src/main/resources/META-INF/plugin.xml` — root plugin descriptor (content-module wiring only)
-- `frontend/src/main/resources/dev.twango.jetplay.frontend.xml` — frontend module descriptor; single source of truth for supported extensions (`fileType`/`fileEditorProvider` are frontend-side, so they live here, not in the root descriptor)
+- `frontend/src/main/resources/dev.twango.jetplay.frontend.xml` — frontend module descriptor; single source of truth for supported extensions. The `frontend` module loads on both host and client, so its `fileType`/`fileEditorProvider` register on the host (for detection/selection) while the JCEF player renders on the client.
 - `gradle.properties` — plugin metadata and version config
 
 ## Conventions
