@@ -90,7 +90,10 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             pageLoaded = false
             pendingJs.clear()
         }
-        browser.loadHTML(html)
+        // JCEF/Swing access must be on the EDT; coroutine error paths can reach here off-thread.
+        SwingUtilities.invokeLater {
+            if (!disposed) browser.loadHTML(html)
+        }
     }
 
     fun dispose() {

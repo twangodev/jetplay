@@ -19,10 +19,17 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
             config.mediaUrl?.let { append("mediaUrl: '${PlayerBridge.escapeJs(it)}',") }
             if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerBridge.escapeJs(config.errorMessage)}',")
             if (config.transcodingReason.isNotEmpty()) append("transcodingReason: '${PlayerBridge.escapeJs(config.transcodingReason)}',")
+            // Emit only non-empty strings so the Svelte component's own defaults stand for unset copy.
             append("ui: {")
-            append("transcodingLabel: '${PlayerBridge.escapeJs(config.ui.transcodingLabel)}',")
-            append("transcodingTip: '${PlayerBridge.escapeJs(config.ui.transcodingTip)}',")
-            append("errorTitle: '${PlayerBridge.escapeJs(config.ui.errorTitle)}',")
+            if (config.ui.transcodingLabel.isNotEmpty()) {
+                append("transcodingLabel: '${PlayerBridge.escapeJs(config.ui.transcodingLabel)}',")
+            }
+            if (config.ui.transcodingTip.isNotEmpty()) {
+                append("transcodingTip: '${PlayerBridge.escapeJs(config.ui.transcodingTip)}',")
+            }
+            if (config.ui.errorTitle.isNotEmpty()) {
+                append("errorTitle: '${PlayerBridge.escapeJs(config.ui.errorTitle)}',")
+            }
             append("},")
             append("};</script>")
         }

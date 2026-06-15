@@ -45,6 +45,9 @@ class MediaLoader(
     // Loopback URLs to release on dispose.
     private val servedUrls = CopyOnWriteArrayList<String>()
 
+    // Transcode outputs to delete on dispose rather than leaking until JVM exit.
+    private val servedTempFiles = CopyOnWriteArrayList<File>()
+
     @Volatile
     private var disposed = false
 
@@ -183,6 +186,7 @@ class MediaLoader(
                 val url = registerServed(MediaServer.serve(temp))
                 if (url != null) {
                     served = true
+                    servedTempFiles.add(temp)
                     bridge.mediaReady(url)
                     armLoadWatchdog(url)
                 }
@@ -196,7 +200,7 @@ class MediaLoader(
         } catch (e: Exception) {
             showLoadError(e.message)
         } finally {
-            // Once served, the browser owns the temp (cleaned on JVM exit); otherwise drop it now.
+            // Unserved temps drop now; served ones are deleted on dispose() when the editor closes.
             if (!served) temp.delete()
         }
     }
@@ -249,6 +253,7 @@ class MediaLoader(
         disposed = true
         scope.cancel()
         servedUrls.forEach(MediaServer::release)
+        servedTempFiles.forEach(File::delete)
     }
 
     private object TranscodeUnavailable : Exception()
