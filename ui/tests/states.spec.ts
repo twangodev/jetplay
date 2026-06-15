@@ -27,28 +27,6 @@ test('video player renders in ready state', async ({ loadApp }) => {
   await expect(page.locator('video')).toBeAttached()
 })
 
-test('downloading state shows progress and file name', async ({ loadApp }) => {
-  const page = await loadApp({
-    state: 'downloading',
-    fileName: 'big-file.mp4',
-  })
-
-  await expect(page.getByText('Downloading\u2026')).toBeVisible()
-  await expect(page.getByText('big-file.mp4')).toBeVisible()
-  // Progress bar container exists
-  await expect(page.locator('.progress-fill')).toBeAttached()
-})
-
-test('downloading state shows reason when provided', async ({ loadApp }) => {
-  const page = await loadApp({
-    state: 'downloading',
-    fileName: 'remote.mp4',
-    downloadingReason: 'Remote file needs to be downloaded',
-  })
-
-  await expect(page.getByText('Remote file needs to be downloaded')).toBeVisible()
-})
-
 test('transcoding state shows progress and tip', async ({ loadApp }) => {
   const page = await loadApp({
     state: 'loading',

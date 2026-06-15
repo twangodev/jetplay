@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../src/main/resources/player',
+    outDir: '../frontend/src/main/resources/player',
     emptyOutDir: true,
   },
 })

@@ -1,7 +1,6 @@
 <script lang="ts">
   import VideoPlayer from './lib/VideoPlayer.svelte'
   import AudioPlayer from './lib/AudioPlayer.svelte'
-  import DownloadingState from './lib/DownloadingState.svelte'
   import TranscodingState from './lib/TranscodingState.svelte'
   import ErrorState from './lib/ErrorState.svelte'
 
@@ -16,7 +15,6 @@
         : (window.__jetplayState ?? config.state ?? 'ready'),
   )
   let progress = $state(window.__jetplayProgress ?? 0)
-  let downloadProgress = $state(window.__jetplayDownloadProgress ?? 0)
   let mediaUrl = $state(window.__jetplayReadyUrl ?? config.mediaUrl ?? '')
   let errorMessage = $state(window.__jetplayError ?? config.errorMessage ?? 'An unknown error occurred')
   // Prefer a buffered push: the IDE may have stashed bars before this handler existed.
@@ -27,15 +25,10 @@
   const fileExtension = config.fileExtension ?? ''
   const isVideo = config.isVideo ?? false
   const transcodingReason = config.transcodingReason ?? ''
-  const downloadingReason = config.downloadingReason ?? ''
   const ui = config.ui ?? {}
 
   window.jetplayUpdateProgress = (percent: number) => {
     progress = percent
-  }
-
-  window.jetplayUpdateDownloadProgress = (percent: number) => {
-    downloadProgress = percent
   }
 
   window.jetplayStartTranscoding = () => {
@@ -64,9 +57,7 @@
   }
 </script>
 
-{#if state === 'downloading'}
-  <DownloadingState {fileName} progress={downloadProgress} reason={downloadingReason} downloadingLabel={ui.downloadingLabel} />
-{:else if state === 'loading'}
+{#if state === 'loading'}
   <TranscodingState {fileName} {progress} reason={transcodingReason} transcodingLabel={ui.transcodingLabel} transcodingTip={ui.transcodingTip} />
 {:else if state === 'error'}
   <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />

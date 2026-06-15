@@ -258,7 +258,7 @@ jobs:
 
       - name: List verifier IDEs
         id: list
-        run: echo "ides=$(.github/scripts/list-verifier-ides.sh)" >> "$GITHUB_OUTPUT"
+        run: echo "ides=$(python3 .github/scripts/list-verifier-ides.py)" >> "$GITHUB_OUTPUT"
 
   # Run plugin structure verification along with IntelliJ Plugin Verifier.
   # One runner per IDE so a single IDE failure doesn't cascade through the
