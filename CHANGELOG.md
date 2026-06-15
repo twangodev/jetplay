@@ -2,6 +2,18 @@
 
 # jetplay Changelog
 
+## [0.5.0](https://github.com/twangodev/jetplay/compare/v0.4.0...v0.5.0) (2026-06-15)
+
+
+### Added
+
+* support Remote Development via Plugin Model V2 content modules ([#43](https://github.com/twangodev/jetplay/issues/43)) ([499074d](https://github.com/twangodev/jetplay/commit/499074d053fd2c8b41f17285d3550b4d3ce94e11))
+
+
+### Fixed
+
+* remove .ts extension to avoid TypeScript conflict ([#45](https://github.com/twangodev/jetplay/issues/45)) ([4c8e742](https://github.com/twangodev/jetplay/commit/4c8e742fea634e81b34aaa8bbfcbd13bce692d08))
+
 ## [0.4.0](https://github.com/twangodev/jetplay/compare/v0.3.0...v0.4.0) (2026-06-12)
 
 
