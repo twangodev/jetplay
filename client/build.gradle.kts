@@ -31,7 +31,7 @@ dependencies {
         // Fail early with a clear message if the IDE layout moved these internal jars.
         val missingLib = libJars.filterNot { it.exists() }
         require(splitJars.isNotEmpty() && missingLib.isEmpty()) {
-            "Missing IntelliJ internal jars for :frontend-split under $ideHome:\n" +
+            "Missing IntelliJ internal jars for :client under $ideHome:\n" +
                 (if (splitJars.isEmpty()) "  $splitDir/*.jar\n" else "") +
                 missingLib.joinToString("\n") { "  $it" }
         }
@@ -44,5 +44,5 @@ dependencies {
 
 // Align the content-module jar name with the module id so the verifier/platform resolve the descriptor.
 tasks.named<org.jetbrains.intellij.platform.gradle.tasks.ComposedJarTask>("composedJar") {
-    archiveBaseName.set("dev.twango.jetplay.frontend.split")
+    archiveBaseName.set("dev.twango.jetplay.client")
 }

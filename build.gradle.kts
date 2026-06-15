@@ -55,7 +55,7 @@ dependencies {
 
         pluginModule(implementation(project(":shared")))
         pluginModule(implementation(project(":frontend")))
-        pluginModule(implementation(project(":frontend-split")))
+        pluginModule(implementation(project(":client")))
         pluginModule(implementation(project(":backend")))
     }
 }

@@ -1,4 +1,4 @@
-package dev.twango.jetplay.editor.split
+package dev.twango.jetplay.editor.client
 
 import com.intellij.openapi.client.ClientProjectSession
 import com.intellij.openapi.fileEditor.ex.FileEditorWithProvider
