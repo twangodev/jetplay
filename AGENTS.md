@@ -6,7 +6,7 @@ IntelliJ Platform plugin providing native audio/video playback in JetBrains IDEs
 
 - Kotlin
 - Gradle (Kotlin DSL)
-- IntelliJ Platform SDK (2025.2+)
+- IntelliJ Platform SDK (2025.3+)
 - JCEF (JBCefBrowser) for media rendering
 - JDK 21
 
