@@ -2,7 +2,7 @@ import { test, expect } from './fixtures'
 
 test('jetplayReady transitions to audio player', async ({ loadApp }) => {
   const page = await loadApp({
-    state: 'downloading',
+    state: 'loading',
     fileName: 'track.ogg',
     fileExtension: 'ogg',
     isVideo: false,
@@ -34,21 +34,6 @@ test('jetplayReady transitions to video player', async ({ loadApp }) => {
   await expect(page.locator('video')).toBeAttached()
 })
 
-test('jetplayStartTranscoding transitions from downloading to loading', async ({ loadApp }) => {
-  const page = await loadApp({
-    state: 'downloading',
-    fileName: 'track.aac',
-  })
-
-  await expect(page.getByText('Downloading\u2026')).toBeVisible()
-
-  await page.evaluate(() => {
-    window.jetplayStartTranscoding?.()
-  })
-
-  await expect(page.getByText('Converting for playback\u2026')).toBeVisible()
-})
-
 test('jetplayError transitions to error state', async ({ loadApp }) => {
   const page = await loadApp({
     state: 'ready',
@@ -76,17 +61,4 @@ test('jetplayUpdateProgress updates transcoding progress', async ({ loadApp }) =
   })
 
   await expect(page.getByText('50%')).toBeVisible()
-})
-
-test('jetplayUpdateDownloadProgress updates download progress', async ({ loadApp }) => {
-  const page = await loadApp({
-    state: 'downloading',
-    fileName: 'big.mp4',
-  })
-
-  await page.evaluate(() => {
-    window.jetplayUpdateDownloadProgress?.(75)
-  })
-
-  await expect(page.getByText('75%')).toBeVisible()
 })

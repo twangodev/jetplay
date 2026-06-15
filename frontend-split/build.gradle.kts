@@ -18,21 +18,24 @@ dependencies {
     compileOnly(files(Callable {
         val ideHome = idesDir.listFiles()?.sortedByDescending { it.name }?.firstOrNull()
             ?: error("No resolved IDE under $idesDir")
-        val jars = listOf(
-            ideHome.resolve("plugins/cwm-plugin/lib/frontend-split/rd-client.jar"),
-            ideHome.resolve("plugins/cwm-plugin/lib/frontend-split/frontend-split.jar"),
-            ideHome.resolve("lib/intellij.rd.platform.jar"),
-            ideHome.resolve("lib/intellij.rd.ui.jar"),
-            ideHome.resolve("lib/intellij.rd.ide.model.generated.jar"),
-            ideHome.resolve("lib/intellij.libraries.rd.core.jar"),
-        )
+        // Glob the whole frontend-split dir instead of naming rd-client.jar/frontend-split.jar:
+        // EAP builds rename these, and the split classes we compile against live somewhere in here.
+        val splitDir = ideHome.resolve("plugins/cwm-plugin/lib/frontend-split")
+        val splitJars = splitDir.listFiles { f -> f.extension == "jar" }?.toList().orEmpty()
+        val libJars = listOf(
+            "lib/intellij.rd.platform.jar",
+            "lib/intellij.rd.ui.jar",
+            "lib/intellij.rd.ide.model.generated.jar",
+            "lib/intellij.libraries.rd.core.jar",
+        ).map { ideHome.resolve(it) }
         // Fail early with a clear message if the IDE layout moved these internal jars.
-        val missing = jars.filterNot { it.exists() }
-        require(missing.isEmpty()) {
+        val missingLib = libJars.filterNot { it.exists() }
+        require(splitJars.isNotEmpty() && missingLib.isEmpty()) {
             "Missing IntelliJ internal jars for :frontend-split under $ideHome:\n" +
-                missing.joinToString("\n") { "  $it" }
+                (if (splitJars.isEmpty()) "  $splitDir/*.jar\n" else "") +
+                missingLib.joinToString("\n") { "  $it" }
         }
-        jars
+        splitJars + libJars
     }))
 
     testImplementation(libs.junit)
