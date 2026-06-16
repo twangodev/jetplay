@@ -10,9 +10,7 @@ import fleet.rpc.RemoteApi
 import fleet.rpc.Rpc
 import fleet.rpc.remoteApiDescriptor
 import kotlinx.coroutines.flow.Flow
-import org.jetbrains.annotations.ApiStatus
 
-@ApiStatus.Internal
 @Rpc
 interface MediaAccessor : RemoteApi<Unit> {
     /** Primary path: stream raw source bytes in order. */
