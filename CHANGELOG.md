@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.5.1](https://github.com/twangodev/jetplay/compare/v0.5.0...v0.5.1) (2026-06-16)
+
+
+### Fixed
+
+* remove internal API usage flagged by JetBrains Marketplace ([#46](https://github.com/twangodev/jetplay/issues/46)) ([f2c8c0a](https://github.com/twangodev/jetplay/commit/f2c8c0a6ea472289c438f6297274ffc373d2f764))
+
 ## [0.5.0](https://github.com/twangodev/jetplay/compare/v0.4.0...v0.5.0) (2026-06-15)
 
 
