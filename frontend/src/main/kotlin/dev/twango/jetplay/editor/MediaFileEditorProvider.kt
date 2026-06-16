@@ -1,6 +1,5 @@
 package dev.twango.jetplay.editor
 
-import com.intellij.idea.AppMode
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorPolicy
@@ -8,6 +7,7 @@ import com.intellij.openapi.fileEditor.FileEditorProvider
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.platform.ide.productMode.IdeProductMode
 import com.intellij.ui.jcef.JBCefApp
 import dev.twango.jetplay.JetPlayBundle
 import dev.twango.jetplay.media.EditorMediaSource
@@ -21,7 +21,7 @@ class MediaFileEditorProvider :
 
     override fun createEditor(project: Project, file: VirtualFile): FileEditor {
         if (!canRenderJcefHere()) {
-            if (AppMode.isRemoteDevHost()) {
+            if (IdeProductMode.isBackend) {
                 // Expected: the host has no display; the client renders the player via the rdclient handler.
                 log.debug("On the Remote Dev host; the client renders ${file.name}")
             } else {
@@ -33,7 +33,7 @@ class MediaFileEditorProvider :
         return MediaFileEditor(project, file, EditorMediaSource(file))
     }
 
-    private fun canRenderJcefHere(): Boolean = !AppMode.isRemoteDevHost() && JBCefApp.isSupported()
+    private fun canRenderJcefHere(): Boolean = !IdeProductMode.isBackend && JBCefApp.isSupported()
 
     override fun getEditorTypeId(): String = "media-player"
 
