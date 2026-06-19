@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "scenes": "node scenes/render.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.2.9",
