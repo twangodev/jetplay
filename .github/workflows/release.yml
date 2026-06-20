@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ 0.4.x ]
 
 permissions:
   contents: write
@@ -22,6 +22,7 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          target-branch: 0.4.x
 
   publish:
     name: Publish Plugin
