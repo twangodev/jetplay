@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.4.1](https://github.com/twangodev/jetplay/compare/v0.4.0...v0.4.1) (2026-06-20)
+
+
+### Fixed
+
+* remove .ts extension to avoid TypeScript conflict (backport [#45](https://github.com/twangodev/jetplay/issues/45)) ([7b7c8e7](https://github.com/twangodev/jetplay/commit/7b7c8e73d1f300c5b081ccb8a3d8fc5deecae630))
+
 ## [0.4.0](https://github.com/twangodev/jetplay/compare/v0.3.0...v0.4.0) (2026-06-12)
 
 
