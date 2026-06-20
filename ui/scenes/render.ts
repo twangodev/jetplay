@@ -8,10 +8,16 @@
   no separate dev server needed. Nothing here ships in the plugin build.
 */
 import { createServer } from 'vite'
-import { chromium } from 'playwright'
+import { chromium, type Page } from 'playwright'
 import { fileURLToPath } from 'node:url'
 import { mkdirSync, realpathSync } from 'node:fs'
 import path from 'node:path'
+
+declare global {
+  interface Window {
+    jetplay?: unknown
+  }
+}
 
 const uiRoot = fileURLToPath(new URL('..', import.meta.url)) // ui/
 const repoRoot = path.resolve(uiRoot, '..')
@@ -44,7 +50,7 @@ const SCENES = [
 
 // Wait for the in-browser-decoded waveform, then park the playhead mid-track so
 // the right-pinned scroll fills the box (it's empty at t=0).
-async function prepareAudio(page, config) {
+async function prepareAudio(page: Page, config: typeof SNEAKY_SNITCH) {
   await page.waitForFunction(
     () => {
       const el = document.querySelector('[data-bars]')
