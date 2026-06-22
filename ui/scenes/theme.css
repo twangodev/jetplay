@@ -1,0 +1,70 @@
+/*
+  Marketing-scene styles. Dev/render only — never imported by the shipped player
+  (src/main.ts), so the plugin build stays free of these fonts and tokens.
+  Builds on the player's own tokens, then layers the twangodev brand language.
+*/
+@import '../src/app.css';
+
+@theme {
+  /* twangodev brand fonts */
+  --font-grotesk: 'Overused Grotesk', system-ui, sans-serif;
+  --font-jbmono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* macOS window chrome + stage backdrop */
+  --color-traffic-red: #ff5f57;
+  --color-traffic-yellow: #febc2e;
+  --color-traffic-green: #28c840;
+  --color-stage: #1b1c1f;
+  --color-stage-deep: #0e0e10;
+
+  /* twangodev light (paper) palette */
+  --color-paper: #f8f6f1;
+  --color-paper-surface: #efede7;
+  --color-ink: #1a1916;
+  --color-ink-muted: #8a8578;
+  --color-paper-subtle: #e2dfd8;
+  --color-paper-accent: #167bff;
+
+  /* twangodev dark palette */
+  --color-night: #1a1916;
+  --color-night-surface: #23221e;
+  --color-night-ink: #e8e5df;
+  --color-night-muted: #7a7568;
+  --color-night-subtle: #2e2d28;
+}
+
+@font-face {
+  font-family: 'Overused Grotesk';
+  src: url('./fonts/OverusedGrotesk-VF.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Overused Grotesk';
+  src: url('./fonts/OverusedGroteskItalic-VF.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-VF.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/JetBrainsMono-Italic-VF.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Virgil';
+  src: url('./fonts/Virgil.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
