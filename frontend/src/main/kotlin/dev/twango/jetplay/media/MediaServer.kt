@@ -22,6 +22,9 @@ object MediaServer {
     private val log = Logger.getInstance(MediaServer::class.java)
     private val files = ConcurrentHashMap<String, MediaByteSource>()
 
+    // Cap concurrent request workers so a stalled read cannot leak threads without bound.
+    private val MAX_WORKERS = (Runtime.getRuntime().availableProcessors() * 2).coerceIn(4, 16)
+
     // Tokens the browser actually fetched; a served-but-never-fetched token means the loopback URL is unreachable.
     private val fetched = ConcurrentHashMap.newKeySet<String>()
     private const val CHUNK = 64 * 1024
@@ -62,7 +65,7 @@ object MediaServer {
 
     private fun start(): HttpServer {
         val srv = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
-        srv.executor = Executors.newCachedThreadPool { r ->
+        srv.executor = Executors.newFixedThreadPool(MAX_WORKERS) { r ->
             Thread(r, "jetplay-media-server").apply { isDaemon = true }
         }
         srv.createContext("/", ::handle)
@@ -116,7 +119,8 @@ object MediaServer {
                 streamRange(source, 0, length, exchange.responseBody)
             }
         } catch (e: Exception) {
-            log.warn("Media server request failed", e)
+            // Headers may already be sent, so closing here aborts the connection rather than completing a truncated body.
+            log.warn("Media server request failed for ${exchange.requestURI.path}, aborting connection", e)
         } finally {
             exchange.close()
         }

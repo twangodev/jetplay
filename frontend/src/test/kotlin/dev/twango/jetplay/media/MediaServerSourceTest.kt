@@ -3,6 +3,7 @@ package dev.twango.jetplay.media
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 
@@ -22,6 +23,28 @@ class MediaServerSourceTest {
             assertEquals(206, conn.responseCode)
             assertEquals("bytes 10-19/1000", conn.getHeaderField("Content-Range"))
             assertArrayEquals(data.copyOfRange(10, 20), conn.inputStream.readBytes())
+            conn.disconnect()
+        } finally {
+            MediaServer.release(url)
+        }
+    }
+
+    @Test
+    fun abortsConnectionWhenSourceReadFails() {
+        val source = RemoteRangeByteSource(1000, "video/mp4") { _, _ ->
+            throw IllegalStateException("simulated RPC read timeout")
+        }
+        val url = MediaServer.serve(source)
+        try {
+            val conn = URI(url).toURL().openConnection() as HttpURLConnection
+            conn.setRequestProperty("Host", "127.0.0.1")
+            // Server aborts the connection on read failure rather than completing a truncated body, so reading it fails.
+            try {
+                conn.responseCode
+                conn.inputStream.readBytes()
+                org.junit.Assert.fail("expected aborted connection")
+            } catch (_: IOException) {
+            }
             conn.disconnect()
         } finally {
             MediaServer.release(url)
