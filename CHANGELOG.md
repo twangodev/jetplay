@@ -2,6 +2,15 @@
 
 # jetplay Changelog
 
+## [0.6.1](https://github.com/twangodev/jetplay/compare/v0.6.0...v0.6.1) (2026-06-22)
+
+
+### Fixed
+
+* bound and cancel loopback RPC reads ([#58](https://github.com/twangodev/jetplay/issues/58)) ([78f135d](https://github.com/twangodev/jetplay/commit/78f135d8738d1fc588d04524d9e7cfbe9d4c08ad))
+* **i18n:** add missing keys to all locale bundles ([#55](https://github.com/twangodev/jetplay/issues/55)) ([80c2e87](https://github.com/twangodev/jetplay/commit/80c2e8759570fe25467f20b0bcd982347d61bde1))
+* **player:** surface HTML5 media errors ([#59](https://github.com/twangodev/jetplay/issues/59)) ([8f85224](https://github.com/twangodev/jetplay/commit/8f8522459c0c7e800ce8afe9268b733057acbf99))
+
 ## [0.6.0](https://github.com/twangodev/jetplay/compare/v0.5.1...v0.6.0) (2026-06-22)
 
 
