@@ -28,10 +28,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.seconds
 
 class MediaLoader(
     private val project: Project,
@@ -136,8 +139,12 @@ class MediaLoader(
                 return@launch
             }
             // The HTTP server thread calls this reader synchronously, so it bridges the suspend RPC with runBlocking.
+            // Parent on the loader scope so editor dispose cancels in-flight reads; bound each read so a stalled link fails fast.
+            val readerJob = scope.coroutineContext.job
             val remote = RemoteRangeByteSource(len, contentTypeForExtension(source.extension)) { offset, length ->
-                runBlocking { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
+                runBlocking(readerJob) {
+                    withTimeout(RPC_READ_TIMEOUT) { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
+                }
             }
             val url = registerServed(MediaServer.serve(remote)) ?: return@launch
             // Push the URL in-page rather than a second loadHTML, which would race the shell's load.
@@ -263,5 +270,6 @@ class MediaLoader(
         private val log = Logger.getInstance(MediaLoader::class.java)
         private const val LOAD_TIMEOUT_SECONDS = 20L
         private const val MILLIS_PER_SECOND = 1000L
+        private val RPC_READ_TIMEOUT = 30.seconds
     }
 }
