@@ -13,3 +13,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+  # Maintain dependencies for the bundled player UI
+  - package-ecosystem: "npm"
+    directory: "/ui"
+    schedule:
+      interval: "daily"
