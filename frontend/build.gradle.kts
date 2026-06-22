@@ -12,8 +12,18 @@ dependencies {
     testImplementation(libs.opentest4j)
 }
 
+// Install the repo-root ui/ npm dependencies so a fresh clone can build without a manual npm install.
+val installUiDeps by tasks.registering(Exec::class) {
+    workingDir = rootProject.file("ui")
+    commandLine("bash", "-lc", "npm ci")
+    inputs.file(rootProject.file("ui/package.json"))
+    inputs.file(rootProject.file("ui/package-lock.json"))
+    outputs.dir(rootProject.file("ui/node_modules"))
+}
+
 // Svelte player UI is built from the repo-root ui/ tree into this module's resources.
 val buildPlayerUi by tasks.registering(Exec::class) {
+    dependsOn(installUiDeps)
     workingDir = rootProject.file("ui")
     commandLine("bash", "-lc", "npm run build")
     inputs.dir(rootProject.file("ui/src"))
