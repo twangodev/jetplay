@@ -63,6 +63,13 @@ class MediaClassificationTest {
     }
 
     @Test
+    fun transportStreamContainersClassifyAsVideo() {
+        assertTrue(MediaClassification.isVideo("mts"))
+        assertTrue(MediaClassification.isVideo("m2ts"))
+        assertTrue(MediaClassification.isVideo("m2t"))
+    }
+
+    @Test
     fun rawAudioExtensionsNeedTranscoding() {
         MediaClassification.rawAudioExtensions.forEach {
             assertTrue("raw codec $it must transcode", MediaClassification.needsTranscoding(it))

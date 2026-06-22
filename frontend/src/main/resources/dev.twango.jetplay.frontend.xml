@@ -8,6 +8,7 @@
                   implementationClass="dev.twango.jetplay.editor.MediaFileType"
                   fieldName="INSTANCE"
                   extensions="mp4;m4v;mkv;avi;mov;wmv;flv;webm;ogv;mts;m2ts;m2t;3gp;ivf;mp3;wav;ogg;oga;opus;m4a;aac;wma;aiff;aif;flac;ac3;eac3;caf;adts;amr;au;pcmu;ulaw;pcma;alaw;g722;gsm;sln"/>
+        <fileIconProvider implementation="dev.twango.jetplay.editor.MediaFileIconProvider"/>
         <fileEditorProvider implementation="dev.twango.jetplay.editor.MediaFileEditorProvider"/>
         <notificationGroup id="JetPlay" displayType="BALLOON"/>
     </extensions>

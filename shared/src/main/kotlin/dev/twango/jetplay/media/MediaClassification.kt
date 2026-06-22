@@ -2,7 +2,8 @@ package dev.twango.jetplay.media
 
 object MediaClassification {
 
-    // Keep in sync with the video extensions in plugin.xml.
+    // Video extensions registered by the media file type in the frontend descriptor.
+    // .ts is excluded to avoid clobbering TypeScript files.
     private val VIDEO_EXTENSIONS = setOf(
         "mp4",
         "m4v",
@@ -13,9 +14,9 @@ object MediaClassification {
         "flv",
         "webm",
         "ogv",
-        "ts",
         "mts",
         "m2ts",
+        "m2t",
         "3gp",
         "ivf",
     )
