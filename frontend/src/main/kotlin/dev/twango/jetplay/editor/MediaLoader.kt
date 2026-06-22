@@ -143,7 +143,9 @@ class MediaLoader(
             val readerJob = scope.coroutineContext.job
             val remote = RemoteRangeByteSource(len, contentTypeForExtension(source.extension)) { offset, length ->
                 runBlocking(readerJob) {
-                    withTimeout(RPC_READ_TIMEOUT) { MediaAccessor.getInstance().readRange(fileId, projectId, offset, length) }
+                    withTimeout(RPC_READ_TIMEOUT) {
+                        MediaAccessor.getInstance().readRange(fileId, projectId, offset, length)
+                    }
                 }
             }
             val url = registerServed(MediaServer.serve(remote)) ?: return@launch
