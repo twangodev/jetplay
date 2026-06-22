@@ -2,6 +2,14 @@
 
 # jetplay Changelog
 
+## [0.6.0](https://github.com/twangodev/jetplay/compare/v0.5.1...v0.6.0) (2026-06-22)
+
+
+### Added
+
+* custom audio/video file icons ([#54](https://github.com/twangodev/jetplay/issues/54)) ([b3769a4](https://github.com/twangodev/jetplay/commit/b3769a4aec048aadf021022ae1b3d6457a5014d5))
+* marketplace marketing-image pipeline (npm run scenes) ([#50](https://github.com/twangodev/jetplay/issues/50)) ([c823cae](https://github.com/twangodev/jetplay/commit/c823caeaefec66abb509d5c6478da049d82be45b))
+
 ## [0.5.1](https://github.com/twangodev/jetplay/compare/v0.5.0...v0.5.1) (2026-06-16)
 
 
