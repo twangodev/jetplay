@@ -27,7 +27,14 @@
     fileName,
     extension = '',
     mediaInfo,
-  }: { src: string; fileName: string; extension?: string; mediaInfo?: MediaInfo } = $props()
+    onMediaError,
+  }: {
+    src: string
+    fileName: string
+    extension?: string
+    mediaInfo?: MediaInfo
+    onMediaError?: (error: MediaError | null) => void
+  } = $props()
 
   let containerEl: HTMLDivElement
   let videoEl: HTMLVideoElement
@@ -206,6 +213,7 @@
       paused = true
       controlsVisible = true
     }}
+    onerror={() => onMediaError?.(videoEl.error)}
   ></video>
 
   {@render topBar()}

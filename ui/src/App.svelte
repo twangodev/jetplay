@@ -3,6 +3,7 @@
   import AudioPlayer from './lib/AudioPlayer.svelte'
   import TranscodingState from './lib/TranscodingState.svelte'
   import ErrorState from './lib/ErrorState.svelte'
+  import { mediaErrorDetail } from './lib/mediaError'
 
   const config = window.jetplay ?? {}
 
@@ -46,6 +47,12 @@
     state = 'error'
   }
 
+  // Surfaces HTML5 media element failures through the same error screen.
+  function onMediaError(error: MediaError | null) {
+    errorMessage = mediaErrorDetail(error)
+    state = 'error'
+  }
+
   // Amplitude bars decoded by FFmpeg in the IDE, cheaper than decoding the whole file in-browser.
   window.jetplayWaveform = (bars: number[]) => {
     waveform = bars
@@ -62,7 +69,7 @@
 {:else if state === 'error'}
   <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />
 {:else if isVideo}
-  <VideoPlayer src={mediaUrl} {fileName} extension={fileExtension} {mediaInfo} />
+  <VideoPlayer src={mediaUrl} {fileName} extension={fileExtension} {mediaInfo} {onMediaError} />
 {:else}
   <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} {mediaInfo} />
 {/if}

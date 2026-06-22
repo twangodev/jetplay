@@ -8,7 +8,13 @@
     extension,
     waveform = [],
     mediaInfo,
-  }: { src: string; fileName: string; extension: string; waveform?: number[]; mediaInfo?: MediaInfo } = $props()
+  }: {
+    src: string
+    fileName: string
+    extension: string
+    waveform?: number[]
+    mediaInfo?: MediaInfo
+  } = $props()
 </script>
 
 <!--
