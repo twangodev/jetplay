@@ -6,7 +6,6 @@
 </script>
 
 <div class="flex h-full w-full items-center justify-between gap-12 bg-night px-16 font-grotesk text-night-ink">
-  <!-- left: tight centered cluster — eyebrow / headline / snippets -->
   <div class="w-[480px] shrink-0">
     <div class="font-jbmono text-sm tracking-wider text-night-muted">jetplay, a jetbrains ide plugin</div>
 
@@ -20,7 +19,6 @@
     </div>
   </div>
 
-  <!-- right: the dark jetplay window, vertically centered -->
   <div class="flex shrink-0 items-center">
     <WindowFrame title={config.fileName ?? 'sneaky-snitch.mp3'} width={580}>
       <AudioPlayer

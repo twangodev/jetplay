@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-const uiRoot = fileURLToPath(new URL('..', import.meta.url)) // ui/
+const uiRoot = fileURLToPath(new URL('..', import.meta.url))
 const repoRoot = path.resolve(uiRoot, '..')
 const outDir = path.join(repoRoot, 'marketing')
 mkdirSync(outDir, { recursive: true })
@@ -82,7 +82,7 @@ const fsAllow = [uiRoot, repoRoot]
 try {
   fsAllow.push(realpathSync(path.join(uiRoot, 'node_modules')))
 } catch {
-  /* node_modules not a symlink — uiRoot already covers it */
+  /* node_modules absent — uiRoot already covers it */
 }
 
 const server = await createServer({
