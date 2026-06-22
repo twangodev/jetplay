@@ -27,12 +27,14 @@
     extension,
     waveform = [],
     mediaInfo,
+    onMediaError,
   }: {
     src: string
     fileName: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
+    onMediaError?: (error: MediaError | null) => void
   } = $props()
 
   const player = useAudioPlayer<{ name: string }>()
@@ -124,6 +126,11 @@
     untrack(() => {
       void player.setActiveItem({ id: src, src, data: { name: fileName } })
     })
+  })
+
+  // Surface the captured HTML5 media error through the same error screen.
+  $effect(() => {
+    if (player.error) onMediaError?.(player.error)
   })
 
   // A late-resolving decode for an old src must not clobber newer bars.

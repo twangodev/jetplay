@@ -8,7 +8,15 @@
     extension,
     waveform = [],
     mediaInfo,
-  }: { src: string; fileName: string; extension: string; waveform?: number[]; mediaInfo?: MediaInfo } = $props()
+    onMediaError,
+  }: {
+    src: string
+    fileName: string
+    extension: string
+    waveform?: number[]
+    mediaInfo?: MediaInfo
+    onMediaError?: (error: MediaError | null) => void
+  } = $props()
 </script>
 
 <!--
@@ -18,5 +26,5 @@
   track. See AudioPlayerBody.svelte.
 -->
 <AudioPlayer.Root>
-  <AudioPlayerBody {src} {fileName} {extension} {waveform} {mediaInfo} />
+  <AudioPlayerBody {src} {fileName} {extension} {waveform} {mediaInfo} {onMediaError} />
 </AudioPlayer.Root>
