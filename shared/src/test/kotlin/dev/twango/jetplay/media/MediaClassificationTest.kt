@@ -64,9 +64,20 @@ class MediaClassificationTest {
 
     @Test
     fun transportStreamContainersClassifyAsVideo() {
-        assertTrue(MediaClassification.isVideo("mts"))
         assertTrue(MediaClassification.isVideo("m2ts"))
         assertTrue(MediaClassification.isVideo("m2t"))
+    }
+
+    @Test
+    fun typeScriptExtensionsDoNotClassifyAsVideo() {
+        assertFalse(MediaClassification.isVideo("ts"))
+        assertFalse(MediaClassification.isVideo("mts"))
+    }
+
+    @Test
+    fun signedLinearUsesNonCollidingExtension() {
+        assertTrue(MediaClassification.rawAudioExtensions.contains("slin"))
+        assertFalse(MediaClassification.rawAudioExtensions.contains("sln"))
     }
 
     @Test

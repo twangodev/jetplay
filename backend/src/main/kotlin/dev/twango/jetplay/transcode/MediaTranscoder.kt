@@ -33,8 +33,7 @@ object MediaTranscoder {
         "pcma" to RawAudioHint("alaw", 8000, 1),
         "alaw" to RawAudioHint("alaw", 8000, 1),
         "g722" to RawAudioHint("g722", 16000, 1),
-        "gsm" to RawAudioHint("gsm", 8000, 1),
-        "sln" to RawAudioHint("s16le", 8000, 1),
+        "slin" to RawAudioHint("s16le", 8000, 1),
     )
 
     /** Must stay in sync with the shared classifier. */

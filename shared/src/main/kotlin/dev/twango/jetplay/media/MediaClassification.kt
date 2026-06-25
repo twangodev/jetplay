@@ -3,7 +3,7 @@ package dev.twango.jetplay.media
 object MediaClassification {
 
     // Video extensions registered by the media file type in the frontend descriptor.
-    // .ts is excluded to avoid clobbering TypeScript files.
+    // .ts and .mts are excluded to avoid clobbering TypeScript files.
     private val VIDEO_EXTENSIONS = setOf(
         "mp4",
         "m4v",
@@ -14,7 +14,6 @@ object MediaClassification {
         "flv",
         "webm",
         "ogv",
-        "mts",
         "m2ts",
         "m2t",
         "3gp",
@@ -34,14 +33,14 @@ object MediaClassification {
     )
 
     // Headerless raw codec streams that need explicit demuxer hints.
+    // Signed-linear uses .slin not .sln to avoid clashing with Visual Studio solution files.
     val rawAudioExtensions: Set<String> = setOf(
         "pcmu",
         "ulaw",
         "pcma",
         "alaw",
         "g722",
-        "gsm",
-        "sln",
+        "slin",
     )
 
     fun isVideo(extension: String): Boolean = extension.lowercase() in VIDEO_EXTENSIONS
