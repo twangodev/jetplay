@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.6.2](https://github.com/twangodev/jetplay/compare/v0.6.1...v0.6.2) (2026-06-25)
+
+
+### Fixed
+
+* stop hijacking .sln/.mts/.gsm developer files as media ([#84](https://github.com/twangodev/jetplay/issues/84)) ([56447c6](https://github.com/twangodev/jetplay/commit/56447c6acd929987db901c533f35c14577f42c03)), closes [#78](https://github.com/twangodev/jetplay/issues/78)
+
 ## [0.6.1](https://github.com/twangodev/jetplay/compare/v0.6.0...v0.6.1) (2026-06-22)
 
 
