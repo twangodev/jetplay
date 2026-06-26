@@ -79,7 +79,7 @@ object MediaInfoExtractor {
             val videoCodec = if (hasVideo) canonicalCodec(grabber.videoCodec) else null
             val frameRate = if (hasVideo) grabber.videoFrameRate.takeIf { it.isFinite() && it > 0 } else null
             val pixelFormat = if (hasVideo) {
-                avutil.av_get_pix_fmt_name(grabber.pixelFormat)?.getString()?.takeIf { it.isNotBlank() }
+                avutil.av_get_pix_fmt_name(grabber.pixelFormat)?.string?.takeIf { it.isNotBlank() }
             } else {
                 null
             }
@@ -115,7 +115,7 @@ object MediaInfoExtractor {
 
     // Codec name from the id, not the decoder name the *CodecName getters return.
     private fun canonicalCodec(codecId: Int): String? =
-        avcodec.avcodec_get_name(codecId)?.getString()?.takeIf { it.isNotBlank() && it != "unknown" && it != "none" }
+        avcodec.avcodec_get_name(codecId)?.string?.takeIf { it.isNotBlank() && it != "unknown" && it != "none" }
 
     private fun computeBitrate(sizeBytes: Long?, durationMs: Long?): Long? {
         if (sizeBytes == null || durationMs == null || durationMs <= 0) return null

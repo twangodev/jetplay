@@ -13,7 +13,7 @@ interface MediaByteSource {
 
 class FileByteSource(private val file: File) : MediaByteSource {
     override val length: Long? get() = if (file.isFile) file.length() else null
-    override val contentType: String? get() = contentTypeForFile(file)
+    override val contentType: String get() = contentTypeForFile(file)
 
     override fun read(offset: Long, length: Int): ByteArray {
         if (offset < 0 || length <= 0 || !file.isFile) return ByteArray(0)
