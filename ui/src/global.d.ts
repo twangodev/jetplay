@@ -22,20 +22,23 @@ declare global {
     albumArt?: string
   }
 
-  // Lazily computed STFT heatmap. `ok: false` means the IDE has nothing to show (ffmpeg absent or unsupported).
-  interface SpectrogramData {
-    ok: boolean
-    timeCols?: number
-    freqBins?: number
-    durationMs?: number
-    sampleRateHz?: number
-    minHz?: number
-    maxHz?: number
-    dbFloor?: number
-    dbCeil?: number
-    logFreq?: boolean
+  // The bridge sends exactly one of two shapes: an unavailable marker, or a fully-populated result.
+  // `ok: false` means the IDE has nothing to show (ffmpeg absent or unsupported).
+  type SpectrogramData = { ok: false } | SpectrogramReady
+
+  interface SpectrogramReady {
+    ok: true
+    timeCols: number
+    freqBins: number
+    durationMs: number
+    sampleRateHz: number
+    minHz: number
+    maxHz: number
+    dbFloor: number
+    dbCeil: number
+    logFreq: boolean
     /** base64 column-major magnitude matrix, length timeCols*freqBins, unsigned 0..255. */
-    data?: string
+    data: string
   }
 
   interface Window {

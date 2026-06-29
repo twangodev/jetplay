@@ -62,6 +62,21 @@ class SpectrogramExtractorTest {
         }
     }
 
+    @Test
+    fun producesAColumnForAClipShorterThanTheFftWindow() {
+        Assume.assumeTrue("FFmpeg native libraries required", FfmpegAvailability.available)
+        // 0.05s @ 8 kHz = 400 samples, well under the 4096-sample FFT window.
+        val wav = generateSineWav(durationSec = 0.05, sampleRate = 8000, freq = 440.0)
+        try {
+            val spec = SpectrogramExtractor.extract(wav)
+            assertNotNull("a short clip should still yield a zero-padded column", spec)
+            assertTrue("expected at least one column", spec!!.timeCols >= 1)
+            assertEquals(spec.timeCols * spec.freqBins, spec.magnitudes.size)
+        } finally {
+            wav.delete()
+        }
+    }
+
     private fun binCenterHz(bin: Int, minHz: Int, maxHz: Int, freqBins: Int): Double =
         minHz * (maxHz.toDouble() / minHz).pow(bin.toDouble() / (freqBins - 1))
 

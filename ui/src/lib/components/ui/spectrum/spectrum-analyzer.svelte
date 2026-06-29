@@ -11,7 +11,7 @@
     isDark = true,
     class: className,
   }: {
-    payload: SpectrogramData
+    payload: SpectrogramReady
     barColor?: string
     isDark?: boolean
     class?: string
@@ -44,7 +44,13 @@
     const cols = payload.timeCols ?? 0
     const bins = payload.freqBins ?? 0
     if (!payload.data || cols <= 0 || bins <= 0) return null
-    const bytes = base64ToBytes(payload.data)
+    // payload.data crossed the RPC + JS-bridge boundary; bail cleanly if it's not valid base64.
+    let bytes: Uint8Array
+    try {
+      bytes = base64ToBytes(payload.data)
+    } catch {
+      return null
+    }
     if (bytes.length < cols * bins) return null
     return { bytes, cols, bins }
   })

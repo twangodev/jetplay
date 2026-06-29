@@ -106,8 +106,11 @@
   // so it's requested from the IDE only the first time the user switches to it.
   let view = $state<'waveform' | 'spectrum'>('waveform')
   let spectrogramRequested = false
-  const spectrogramReady = $derived(spectrogram?.ok === true)
   const spectrogramUnavailable = $derived(spectrogram?.ok === false)
+  // The spectrum is a lazy backend RPC, independent of the waveform — so its availability must not be
+  // coupled to whether bars arrived (e.g. remote files where the in-browser waveform fallback is skipped).
+  const canRequestSpectrum = typeof window.jetplayRequestSpectrogram === 'function'
+  const showVisualization = $derived(hasWaveform || canRequestSpectrum || spectrogram !== undefined)
 
   function setView(next: 'waveform' | 'spectrum') {
     view = next
@@ -350,8 +353,8 @@
       {/if}
     </div>
 
-    <!-- Visualization: waveform scrubber or live spectrum analyzer. Mounts once bars exist. -->
-    {#if hasWaveform}
+    <!-- Visualization: waveform scrubber or live spectrum analyzer (the spectrum is reachable even without bars). -->
+    {#if showVisualization}
       <div transition:slide={{ duration: 450 }}>
         <!-- Shared lane: height eases between views; the two views crossfade over it. -->
         <div
@@ -365,7 +368,7 @@
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
               bind:this={waveformContainerEl}
-              class="absolute inset-0 cursor-grab touch-none p-2 outline-none select-none active:cursor-grabbing"
+              class="absolute inset-0 cursor-grab touch-none rounded-lg p-2 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing"
               role="slider"
               tabindex="0"
               aria-label="Seek playback"
@@ -389,7 +392,7 @@
                 </div>
               </div>
             </div>
-          {:else if spectrogramReady && spectrogram}
+          {:else if spectrogram?.ok}
             <div class="absolute inset-0" in:fade={{ duration: 200 }} out:fade={{ duration: 150 }}>
               <SpectrumAnalyzer payload={spectrogram} {barColor} {isDark} class="h-full w-full" />
             </div>
@@ -413,7 +416,7 @@
       <AudioPlayerDuration class="text-xs text-muted-foreground tabular-nums" />
       <!-- Keep the two trailing icon controls as a tight cluster. -->
       <div class="flex items-center">
-        {#if hasWaveform}
+        {#if showVisualization}
           <!-- Single button that flips the visualization between waveform and spectrum (shows the target view's icon). -->
           <Button
             variant="ghost"

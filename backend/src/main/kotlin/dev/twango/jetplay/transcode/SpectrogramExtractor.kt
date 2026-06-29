@@ -87,6 +87,7 @@ object SpectrogramExtractor {
         var frames = 0L
         var totalSamples = 0L
         var filled = 0
+        var hitDurationCap = false
 
         var done = false
         while (!done && !Thread.currentThread().isInterrupted) {
@@ -102,13 +103,27 @@ object SpectrogramExtractor {
                         computeColumn(window, hann, re, im, fftMag, loIdx, hiIdx, column)
                         pool.add(column)
                         frames++
-                        done = frames >= maxFrames
+                        if (frames >= maxFrames) {
+                            hitDurationCap = true
+                            done = true
+                        }
                         // Slide the window by one hop, retaining the overlap; harmless on the final frame.
                         System.arraycopy(window, HOP, window, 0, FFT_SIZE - HOP)
                         filled = FFT_SIZE - HOP
                     }
                 }
             }
+        }
+
+        // Unreliable container duration but actually over the cap: honor the null contract rather than clip.
+        if (hitDurationCap) return null
+
+        // Flush a final zero-padded frame so short clips and the trailing partial hop still yield a column.
+        val pendingSamples = if (frames == 0L) filled else filled - (FFT_SIZE - HOP)
+        if (pendingSamples > 0) {
+            for (i in filled until FFT_SIZE) window[i] = 0.0
+            computeColumn(window, hann, re, im, fftMag, loIdx, hiIdx, column)
+            pool.add(column)
         }
 
         val cols = pool.columns()
