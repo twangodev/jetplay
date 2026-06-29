@@ -60,10 +60,10 @@ object MediaTranscoder {
 
             runFrameLoop(grabber, recorder, hasAudio, totalMicroseconds, onProgress)
         } finally {
-            if (recorderStarted) safely("recorder.stop") { recorder!!.stop() }
-            recorder?.let { safely("recorder.release") { it.release() } }
-            if (grabberStarted) safely("grabber.stop") { grabber.stop() }
-            safely("grabber.release") { grabber.release() }
+            if (recorderStarted) log.safely("recorder.stop") { recorder!!.stop() }
+            recorder?.let { log.safely("recorder.release") { it.release() } }
+            if (grabberStarted) log.safely("grabber.stop") { grabber.stop() }
+            log.safely("grabber.release") { grabber.release() }
         }
 
         onProgress(PROGRESS_COMPLETE)
@@ -140,13 +140,5 @@ object MediaTranscoder {
         val tenth = (pct * PROGRESS_PRECISION).toLong()
         if (tenth != lastReportedTenth) onProgress(pct)
         return tenth
-    }
-
-    private inline fun safely(action: String, block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            log.warn("$action failed", e)
-        }
     }
 }
