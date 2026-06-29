@@ -1,16 +1,18 @@
 <script lang="ts">
   import { useAudioPlayer } from '$lib/components/ui/audio-player/index.js'
   import { cn } from '$lib/utils.js'
-  import { cssColor, parseRgb } from './colors.js'
+  import { parseRgb } from './colors.js'
 
   // Real-time FFT spectrum analyzer (à la FabFilter Pro-Q / Voxengo SPAN): log-frequency X, dB Y,
   // animated from the precomputed STFT matrix — the column under the playhead is the current frame.
   let {
     payload,
+    barColor = '#a1a1aa',
     isDark = true,
     class: className,
   }: {
     payload: SpectrogramData
+    barColor?: string
     isDark?: boolean
     class?: string
   } = $props()
@@ -45,7 +47,6 @@
     const container = containerEl
     const m = matrix
     if (!canvas || !container || !m) return
-    void isDark // re-init colours when the theme flips
 
     const minHz = payload.minHz ?? 20
     const maxHz = payload.maxHz ?? 20000
@@ -53,10 +54,14 @@
     const dbCeil = payload.dbCeil ?? 0
     const logRange = Math.log(maxHz / minHz)
 
-    const [lr, lg, lb] = parseRgb(cssColor('--primary', isDark ? '#e5e5e5' : '#18181b'))
-    const [gr, gg, gb] = parseRgb(cssColor('--muted-foreground', '#71717a'))
+    // Derive colours from the waveform's theme tint (a plain hex that always renders), not a CSS var:
+    // resolving --primary via getComputedStyle is unreliable across themes/JCEF. Brighten the line in dark mode.
+    const [br, bg, bb] = parseRgb(barColor)
+    const mix = (c: number, to: number, t: number) => Math.round(c + (to - c) * t)
+    const lift = isDark ? 0.45 : 0
+    const [lr, lg, lb] = [mix(br, 255, lift), mix(bg, 255, lift), mix(bb, 255, lift)]
     const accent = (a: number) => `rgba(${lr},${lg},${lb},${a})`
-    const grid = (a: number) => `rgba(${gr},${gg},${gb},${a})`
+    const grid = (a: number) => `rgba(${br},${bg},${bb},${a})`
 
     const disp = new Float32Array(m.bins)
     const smooth = new Float32Array(m.bins)

@@ -5,4 +5,4 @@ export {
 	//
 	Root as SpectrumAnalyzer,
 };
-export { cssColor, parseRgb } from "./colors.js";
+export { parseRgb } from "./colors.js";

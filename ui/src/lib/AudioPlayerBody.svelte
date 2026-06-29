@@ -408,7 +408,7 @@
           </div>
         {:else if spectrogramReady && spectrogram}
           <div class="h-32 overflow-hidden rounded-lg bg-foreground/10 dark:bg-black/80">
-            <SpectrumAnalyzer payload={spectrogram} {isDark} class="h-full w-full" />
+            <SpectrumAnalyzer payload={spectrogram} {barColor} {isDark} class="h-full w-full" />
           </div>
         {:else}
           <div class="flex h-32 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
