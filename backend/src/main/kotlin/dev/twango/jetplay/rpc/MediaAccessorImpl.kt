@@ -124,8 +124,8 @@ class MediaAccessorImpl : MediaAccessor {
         withFfmpegResolvedFile(fileId, projectId, emptyList()) { WaveformExtractor.extract(it) }
 
     override suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo? =
-        withFfmpegResolvedFile<MediaInfo?>(fileId, projectId, null) { MediaInfoExtractor.extract(it) }
+        withFfmpegResolvedFile(fileId, projectId, null) { MediaInfoExtractor.extract(it) }
 
     override suspend fun extractSpectrogram(fileId: VirtualFileId, projectId: ProjectId): Spectrogram? =
-        withFfmpegResolvedFile<Spectrogram?>(fileId, projectId, null) { SpectrogramExtractor.extract(it) }
+        withFfmpegResolvedFile(fileId, projectId, null) { SpectrogramExtractor.extract(it) }
 }
