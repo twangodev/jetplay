@@ -7,8 +7,10 @@ import com.intellij.ide.vfs.virtualFile
 import com.intellij.platform.project.ProjectId
 import com.intellij.platform.project.findProjectOrNull
 import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.media.Spectrogram
 import dev.twango.jetplay.transcode.FfmpegAvailability
 import dev.twango.jetplay.transcode.MediaInfoExtractor
+import dev.twango.jetplay.transcode.SpectrogramExtractor
 import dev.twango.jetplay.transcode.TranscodeRunner
 import dev.twango.jetplay.transcode.WaveformExtractor
 import kotlinx.coroutines.Dispatchers
@@ -118,5 +120,12 @@ class MediaAccessorImpl : MediaAccessor {
             if (!FfmpegAvailability.available) return@withContext null
             val file = resolveFile(fileId, projectId) ?: return@withContext null
             runCatching { MediaInfoExtractor.extract(file) }.getOrNull()
+        }
+
+    override suspend fun extractSpectrogram(fileId: VirtualFileId, projectId: ProjectId): Spectrogram? =
+        withContext(Dispatchers.IO) {
+            if (!FfmpegAvailability.available) return@withContext null
+            val file = resolveFile(fileId, projectId) ?: return@withContext null
+            runCatching { SpectrogramExtractor.extract(file) }.getOrNull()
         }
 }
