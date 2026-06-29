@@ -19,21 +19,21 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
             append("window.jetplay = {")
             append("state: '${config.state}',")
             append("isVideo: ${config.isVideo},")
-            append("fileName: '${PlayerBridge.escapeJs(config.fileName)}',")
-            append("fileExtension: '${PlayerBridge.escapeJs(config.fileExtension)}',")
-            config.mediaUrl?.let { append("mediaUrl: '${PlayerBridge.escapeJs(it)}',") }
-            if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerBridge.escapeJs(config.errorMessage)}',")
-            if (config.transcodingReason.isNotEmpty()) append("transcodingReason: '${PlayerBridge.escapeJs(config.transcodingReason)}',")
+            append("fileName: '${PlayerPayloads.escapeJs(config.fileName)}',")
+            append("fileExtension: '${PlayerPayloads.escapeJs(config.fileExtension)}',")
+            config.mediaUrl?.let { append("mediaUrl: '${PlayerPayloads.escapeJs(it)}',") }
+            if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerPayloads.escapeJs(config.errorMessage)}',")
+            if (config.transcodingReason.isNotEmpty()) append("transcodingReason: '${PlayerPayloads.escapeJs(config.transcodingReason)}',")
             // Emit only non-empty strings so the Svelte component's own defaults stand for unset copy.
             append("ui: {")
             if (config.ui.transcodingLabel.isNotEmpty()) {
-                append("transcodingLabel: '${PlayerBridge.escapeJs(config.ui.transcodingLabel)}',")
+                append("transcodingLabel: '${PlayerPayloads.escapeJs(config.ui.transcodingLabel)}',")
             }
             if (config.ui.transcodingTip.isNotEmpty()) {
-                append("transcodingTip: '${PlayerBridge.escapeJs(config.ui.transcodingTip)}',")
+                append("transcodingTip: '${PlayerPayloads.escapeJs(config.ui.transcodingTip)}',")
             }
             if (config.ui.errorTitle.isNotEmpty()) {
-                append("errorTitle: '${PlayerBridge.escapeJs(config.ui.errorTitle)}',")
+                append("errorTitle: '${PlayerPayloads.escapeJs(config.ui.errorTitle)}',")
             }
             append("},")
             append("};</script>")

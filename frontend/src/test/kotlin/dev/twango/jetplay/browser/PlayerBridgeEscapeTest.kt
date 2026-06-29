@@ -13,62 +13,62 @@ class PlayerBridgeEscapeTest {
 
     @Test
     fun plainStringUnchanged() {
-        assertEquals("hello world", PlayerBridge.escapeJs("hello world"))
+        assertEquals("hello world", PlayerPayloads.escapeJs("hello world"))
     }
 
     @Test
     fun backslashEscaped() {
-        assertEquals("a\\\\b", PlayerBridge.escapeJs("a\\b"))
+        assertEquals("a\\\\b", PlayerPayloads.escapeJs("a\\b"))
     }
 
     @Test
     fun singleQuoteEscaped() {
-        assertEquals("it\\'s", PlayerBridge.escapeJs("it's"))
+        assertEquals("it\\'s", PlayerPayloads.escapeJs("it's"))
     }
 
     @Test
     fun doubleQuoteEscaped() {
-        assertEquals("say \\\"hi\\\"", PlayerBridge.escapeJs("say \"hi\""))
+        assertEquals("say \\\"hi\\\"", PlayerPayloads.escapeJs("say \"hi\""))
     }
 
     @Test
     fun newlineEscaped() {
-        assertEquals("line1\\nline2", PlayerBridge.escapeJs("line1\nline2"))
+        assertEquals("line1\\nline2", PlayerPayloads.escapeJs("line1\nline2"))
     }
 
     @Test
     fun carriageReturnRemoved() {
-        assertEquals("ab", PlayerBridge.escapeJs("a\rb"))
+        assertEquals("ab", PlayerPayloads.escapeJs("a\rb"))
     }
 
     @Test
     fun angleBracketsEscaped() {
-        assertEquals("\\x3cscript\\x3e", PlayerBridge.escapeJs("<script>"))
+        assertEquals("\\x3cscript\\x3e", PlayerPayloads.escapeJs("<script>"))
     }
 
     @Test
     fun combinedSpecialCharacters() {
         val input = "it's a <b>\"test\"</b>\nwith\\stuff\r"
         val expected = "it\\'s a \\x3cb\\x3e\\\"test\\\"\\x3c/b\\x3e\\nwith\\\\stuff"
-        assertEquals(expected, PlayerBridge.escapeJs(input))
+        assertEquals(expected, PlayerPayloads.escapeJs(input))
     }
 
     @Test
     fun emptyString() {
-        assertEquals("", PlayerBridge.escapeJs(""))
+        assertEquals("", PlayerPayloads.escapeJs(""))
     }
 
     // --- media-info JSON serialization (carries arbitrary tag text) ---
 
     @Test
     fun jsonStringEscapesQuotesBackslashControlAndLineSeparators() {
-        assertEquals("\"a\\\"b\"", PlayerBridge.jsonString("a\"b"))
-        assertEquals("\"a\\\\b\"", PlayerBridge.jsonString("a\\b"))
-        assertEquals("\"l1\\nl2\"", PlayerBridge.jsonString("l1\nl2"))
+        assertEquals("\"a\\\"b\"", PlayerPayloads.jsonString("a\"b"))
+        assertEquals("\"a\\\\b\"", PlayerPayloads.jsonString("a\\b"))
+        assertEquals("\"l1\\nl2\"", PlayerPayloads.jsonString("l1\nl2"))
         // A lone control char becomes a \u00xx escape.
-        assertEquals("\"a\\u0001b\"", PlayerBridge.jsonString("a\u0001b"))
+        assertEquals("\"a\\u0001b\"", PlayerPayloads.jsonString("a\u0001b"))
         // U+2028 is legal JSON but terminates a JS string literal, so it must escape.
-        assertEquals("\"a\\u2028b\"", PlayerBridge.jsonString("a\u2028b"))
+        assertEquals("\"a\\u2028b\"", PlayerPayloads.jsonString("a\u2028b"))
     }
 
     @Test
@@ -86,7 +86,7 @@ class PlayerBridgeEscapeTest {
             tags = listOf(MediaTag("Title", "O'Brien \"x\""), MediaTag("Artist", "A\\B")),
             albumArt = "data:image/png;base64,AAAA",
         )
-        val json = PlayerBridge.mediaInfoJson(info)!!
+        val json = PlayerPayloads.mediaInfoJson(info)!!
         assertTrue(json.startsWith("{") && json.endsWith("}"))
         assertTrue(json.contains("\"sampleRateHz\":44100"))
         assertTrue(json.contains("\"label\":\"Title\",\"value\":\"O'Brien \\\"x\\\"\""))
@@ -99,14 +99,14 @@ class PlayerBridgeEscapeTest {
     @Test
     fun mediaInfoJsonReturnsNullWhenEverythingIsEmpty() {
         val empty = MediaInfo(null, null, null, null, null, null, null, null, null)
-        assertNull(PlayerBridge.mediaInfoJson(empty))
+        assertNull(PlayerPayloads.mediaInfoJson(empty))
     }
 
     // --- spectrogram JSON serialization (carries a base64 magnitude matrix) ---
 
     @Test
     fun spectrogramJsonForNullSignalsUnavailable() {
-        assertEquals("{\"ok\":false}", PlayerBridge.spectrogramJson(null))
+        assertEquals("{\"ok\":false}", PlayerPayloads.spectrogramJson(null))
     }
 
     @Test
@@ -123,7 +123,7 @@ class PlayerBridgeEscapeTest {
             logFreq = true,
             magnitudes = byteArrayOf(0, 127, -1, 64),
         )
-        val json = PlayerBridge.spectrogramJson(spec)
+        val json = PlayerPayloads.spectrogramJson(spec)
         assertTrue(json.contains("\"ok\":true"))
         assertTrue(json.contains("\"timeCols\":2"))
         assertTrue(json.contains("\"freqBins\":2"))
