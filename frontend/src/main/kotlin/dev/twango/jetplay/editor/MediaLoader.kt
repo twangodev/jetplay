@@ -108,9 +108,12 @@ class MediaLoader(
     }
 
     // Computed on first reveal rather than on open: a full STFT decode is too heavy to run for every audio file.
+    // No isRemote guard: extraction runs on the host, which resolves the file by id even when it's remote to
+    // this client. A genuinely unresolvable source just comes back null below.
     private fun requestSpectrogram() {
         if (!spectrogramRequested.compareAndSet(false, true)) return
-        if (source.isRemote || source.extension.lowercase() in MediaClassification.rawAudioExtensions) {
+        // Headerless raw codecs lack the demuxer hints to decode cleanly, so skip them outright.
+        if (source.extension.lowercase() in MediaClassification.rawAudioExtensions) {
             if (!bridge.disposed) bridge.sendSpectrogram(null)
             return
         }
