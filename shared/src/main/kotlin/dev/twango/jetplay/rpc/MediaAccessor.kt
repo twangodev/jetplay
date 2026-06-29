@@ -6,6 +6,7 @@ import com.intellij.ide.vfs.VirtualFileId
 import com.intellij.platform.project.ProjectId
 import com.intellij.platform.rpc.RemoteApiProviderService
 import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.media.Spectrogram
 import fleet.rpc.RemoteApi
 import fleet.rpc.Rpc
 import fleet.rpc.remoteApiDescriptor
@@ -29,6 +30,9 @@ interface MediaAccessor : RemoteApi<Unit> {
 
     /** null if ffmpeg unavailable or no readable stream. */
     suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo?
+
+    /** null if ffmpeg unavailable, format unsupported, or audio exceeds the duration cap. */
+    suspend fun extractSpectrogram(fileId: VirtualFileId, projectId: ProjectId): Spectrogram?
 
     companion object {
         suspend fun getInstance(): MediaAccessor =
