@@ -22,6 +22,22 @@ declare global {
     albumArt?: string
   }
 
+  // Lazily computed STFT heatmap. `ok: false` means the IDE has nothing to show (ffmpeg absent or unsupported).
+  interface SpectrogramData {
+    ok: boolean
+    timeCols?: number
+    freqBins?: number
+    durationMs?: number
+    sampleRateHz?: number
+    minHz?: number
+    maxHz?: number
+    dbFloor?: number
+    dbCeil?: number
+    logFreq?: boolean
+    /** base64 column-major magnitude matrix, length timeCols*freqBins, unsigned 0..255. */
+    data?: string
+  }
+
   interface Window {
     jetplay?: {
       mediaUrl?: string
@@ -53,5 +69,9 @@ declare global {
     jetplayMediaInfo?: (info: MediaInfo) => void
     __jetplayMediaInfo?: MediaInfo
     jetplayOpenLink?: (url: string) => void
+    // Lazy spectrogram: the page asks via jetplayRequestSpectrogram, the IDE answers via jetplaySpectrogram.
+    jetplayRequestSpectrogram?: () => void
+    jetplaySpectrogram?: (data: SpectrogramData) => void
+    __jetplaySpectrogram?: SpectrogramData
   }
 }

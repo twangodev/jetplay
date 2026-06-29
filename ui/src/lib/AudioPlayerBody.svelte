@@ -15,6 +15,7 @@
   } from '$lib/components/ui/audio-player/index.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Waveform } from '$lib/components/ui/waveform/index.js'
+  import { Spectrogram } from '$lib/components/ui/spectrogram/index.js'
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
   import { formatTime } from './formatTime'
@@ -27,12 +28,14 @@
     extension,
     waveform = [],
     mediaInfo,
+    spectrogram,
   }: {
     src: string
     fileName: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
+    spectrogram?: SpectrogramData
   } = $props()
 
   const player = useAudioPlayer<{ name: string }>()
@@ -98,6 +101,21 @@
 
   // Gate the chevron on real content, so an empty push never expands into nothing.
   const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
+
+  // Spectrogram is opt-in and heavy, so it's requested from the IDE only on first reveal.
+  let showSpectrogram = $state(false)
+  let spectrogramRequested = false
+  const spectrogramReady = $derived(spectrogram?.ok === true)
+  const spectrogramUnavailable = $derived(spectrogram?.ok === false)
+  const spectrogramLoading = $derived(showSpectrogram && spectrogram === undefined)
+
+  function toggleSpectrogram() {
+    showSpectrogram = !showSpectrogram
+    if (showSpectrogram && spectrogram === undefined && !spectrogramRequested) {
+      spectrogramRequested = true
+      window.jetplayRequestSpectrogram?.()
+    }
+  }
 
   // Track the IDE theme via prefers-color-scheme (dark unless prefers-light).
   let isDark = $state(true)
@@ -363,6 +381,37 @@
         </div>
       </div>
     {/if}
+
+    <!-- Spectrogram (opt-in; the IDE computes it lazily on first reveal) -->
+    <div class="space-y-2">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 rounded-sm text-left text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        aria-expanded={showSpectrogram}
+        aria-controls="spectrogram-panel"
+        aria-label="Toggle spectrogram"
+        onclick={toggleSpectrogram}
+      >
+        <span class="font-medium">Spectrogram</span>
+        <ChevronDown class={cn('ml-auto size-4 shrink-0 transition-transform', showSpectrogram && 'rotate-180')} />
+      </button>
+
+      {#if showSpectrogram}
+        <div id="spectrogram-panel" transition:slide={{ duration: 250 }}>
+          {#if spectrogramReady && spectrogram}
+            <Spectrogram payload={spectrogram} height={160} class="rounded-lg bg-black/80" />
+          {:else if spectrogramUnavailable}
+            <div class="rounded-lg bg-foreground/5 p-4 text-center text-xs text-muted-foreground">
+              Spectrogram unavailable for this file
+            </div>
+          {:else if spectrogramLoading}
+            <div class="rounded-lg bg-foreground/5 p-4 text-center text-xs text-muted-foreground">
+              Analyzing audio&hellip;
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
 
     <!-- Time / scrub / duration / speed -->
     <div class="flex items-center gap-2">

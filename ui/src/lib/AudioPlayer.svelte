@@ -8,12 +8,14 @@
     extension,
     waveform = [],
     mediaInfo,
+    spectrogram,
   }: {
     src: string
     fileName: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
+    spectrogram?: SpectrogramData
   } = $props()
 </script>
 
@@ -24,5 +26,5 @@
   track. See AudioPlayerBody.svelte.
 -->
 <AudioPlayer.Root>
-  <AudioPlayerBody {src} {fileName} {extension} {waveform} {mediaInfo} />
+  <AudioPlayerBody {src} {fileName} {extension} {waveform} {mediaInfo} {spectrogram} />
 </AudioPlayer.Root>
