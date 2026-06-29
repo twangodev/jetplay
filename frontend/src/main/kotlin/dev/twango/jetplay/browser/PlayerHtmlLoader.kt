@@ -8,9 +8,14 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
                 ?: error("Player UI not found — run 'npm run build' in the ui/ directory")
         }
 
-        internal fun buildConfigScript(config: PlayerConfig, openLinkJs: String): String = buildString {
+        internal fun buildConfigScript(
+            config: PlayerConfig,
+            openLinkJs: String,
+            spectrogramRequestJs: String = "",
+        ): String = buildString {
             append("<script>")
             append("window.jetplayOpenLink = function(url) { $openLinkJs };")
+            append("window.jetplayRequestSpectrogram = function() { $spectrogramRequestJs };")
             append("window.jetplay = {")
             append("state: '${config.state}',")
             append("isVideo: ${config.isVideo},")
@@ -37,7 +42,8 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
 
     fun load(config: PlayerConfig) {
         val openLinkJs = bridge.openLinkQuery.inject("url")
-        val configScript = buildConfigScript(config, openLinkJs)
+        val spectrogramRequestJs = bridge.spectrogramRequestQuery.inject("''")
+        val configScript = buildConfigScript(config, openLinkJs, spectrogramRequestJs)
         bridge.loadHtml(playerHtml.replace("</head>", "$configScript</head>"))
     }
 }

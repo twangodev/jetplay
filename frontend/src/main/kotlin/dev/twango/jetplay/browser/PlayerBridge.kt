@@ -5,9 +5,11 @@ import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import dev.twango.jetplay.media.MediaInfo
+import dev.twango.jetplay.media.Spectrogram
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
+import java.util.Base64
 import javax.swing.SwingUtilities
 
 class PlayerBridge(private val browser: JBCefBrowser) {
@@ -23,6 +25,17 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     val openLinkQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
         addHandler { url ->
             BrowserUtil.browse(url)
+            null
+        }
+    }
+
+    // The spectrogram is heavy, so the page asks for it only when the user first reveals that view.
+    @Volatile
+    var onSpectrogramRequest: (() -> Unit)? = null
+
+    val spectrogramRequestQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
+        addHandler { _ ->
+            onSpectrogramRequest?.invoke()
             null
         }
     }
@@ -85,6 +98,12 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         executeJs("window.__jetplayMediaInfo=$json;if(window.jetplayMediaInfo)window.jetplayMediaInfo(window.__jetplayMediaInfo)")
     }
 
+    // Carries either the matrix or {ok:false} so a lazy request that finds nothing can stop the spinner.
+    fun sendSpectrogram(spec: Spectrogram?) {
+        val json = spectrogramJson(spec)
+        executeJs("window.__jetplaySpectrogram=$json;if(window.jetplaySpectrogram)window.jetplaySpectrogram(window.__jetplaySpectrogram)")
+    }
+
     fun loadHtml(html: String) {
         synchronized(pendingJs) {
             pageLoaded = false
@@ -99,6 +118,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     fun dispose() {
         disposed = true
         openLinkQuery.dispose()
+        spectrogramRequestQuery.dispose()
         browser.dispose()
     }
 
@@ -142,6 +162,26 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             }
             if (parts.isEmpty()) return null
             return parts.joinToString(",", "{", "}")
+        }
+
+        // Numbers are emitted as literals; only the base64 matrix is a string (it never contains JS specials).
+        internal fun spectrogramJson(spec: Spectrogram?): String {
+            if (spec == null) return "{\"ok\":false}"
+            val data = Base64.getEncoder().encodeToString(spec.magnitudes)
+            return buildString {
+                append("{\"ok\":true")
+                append(",\"timeCols\":${spec.timeCols}")
+                append(",\"freqBins\":${spec.freqBins}")
+                append(",\"durationMs\":${spec.durationMs}")
+                append(",\"sampleRateHz\":${spec.sampleRateHz}")
+                append(",\"minHz\":${spec.minHz}")
+                append(",\"maxHz\":${spec.maxHz}")
+                append(",\"dbFloor\":${spec.dbFloor}")
+                append(",\"dbCeil\":${spec.dbCeil}")
+                append(",\"logFreq\":${spec.logFreq}")
+                append(",\"data\":${jsonString(data)}")
+                append("}")
+            }
         }
 
         internal fun jsonString(s: String): String {
