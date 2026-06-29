@@ -39,6 +39,7 @@ object MediaTranscoder {
     /** Must stay in sync with the shared classifier. */
     internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
 
+    /** Runs ffmpeg, invoking onProgress(percent). Returns the transcoded File; throws on failure. */
     fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
         val outputFile = Files.createTempFile("jetplay-", ".webm").toFile().apply { deleteOnExit() }
 
