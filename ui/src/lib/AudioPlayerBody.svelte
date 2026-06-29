@@ -352,33 +352,7 @@
 
     <!-- Visualization: waveform scrubber or live spectrum analyzer. Mounts once bars exist. -->
     {#if hasWaveform}
-      <div class="space-y-2" transition:slide={{ duration: 450 }}>
-        <!-- View toggle -->
-        <div class="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5 text-xs">
-          <button
-            type="button"
-            class={cn(
-              'rounded-md px-2.5 py-1 font-medium transition-colors',
-              view === 'waveform' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-            aria-pressed={view === 'waveform'}
-            onclick={() => setView('waveform')}
-          >
-            Waveform
-          </button>
-          <button
-            type="button"
-            class={cn(
-              'rounded-md px-2.5 py-1 font-medium transition-colors',
-              view === 'spectrum' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-            aria-pressed={view === 'spectrum'}
-            onclick={() => setView('spectrum')}
-          >
-            Spectrum
-          </button>
-        </div>
-
+      <div class="relative" transition:slide={{ duration: 450 }}>
         {#if view === 'waveform'}
           <!-- Scrolling / scratchable waveform (drag to scrub). -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -415,6 +389,32 @@
             {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
           </div>
         {/if}
+
+        <!-- View toggle floats over the lane's corner so it doesn't claim its own row. -->
+        <div class="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-md border border-border bg-background/70 p-0.5 text-[11px] shadow-sm backdrop-blur-sm">
+          <button
+            type="button"
+            class={cn(
+              'rounded px-2 py-0.5 font-medium transition-colors',
+              view === 'waveform' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+            aria-pressed={view === 'waveform'}
+            onclick={() => setView('waveform')}
+          >
+            Waveform
+          </button>
+          <button
+            type="button"
+            class={cn(
+              'rounded px-2 py-0.5 font-medium transition-colors',
+              view === 'spectrum' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+            aria-pressed={view === 'spectrum'}
+            onclick={() => setView('spectrum')}
+          >
+            Spectrum
+          </button>
+        </div>
       </div>
     {/if}
 
