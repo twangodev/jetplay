@@ -353,42 +353,56 @@
     <!-- Visualization: waveform scrubber or live spectrum analyzer. Mounts once bars exist. -->
     {#if hasWaveform}
       <div transition:slide={{ duration: 450 }}>
-        {#if view === 'waveform'}
-          <!-- Scrolling / scratchable waveform (drag to scrub). -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            bind:this={waveformContainerEl}
-            class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
-            role="slider"
-            tabindex="0"
-            aria-label="Seek playback"
-            data-bars={precomputedWaveform.length}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={scrubberValue}
-            onpointerdown={scrub.handlePointerDown}
-            onkeydown={scrub.handleKeyDown}
-          >
-            <div class="relative h-full w-full overflow-hidden">
-              <div
-                class="absolute left-0"
-                style:transform="translateX({scrub.offset}px)"
-                style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
-                style:width="{displayWidth}px"
-              >
-                <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+        <!-- Shared lane: height eases between views; the two views crossfade over it. -->
+        <div
+          class={cn(
+            'relative overflow-hidden rounded-lg bg-foreground/10 transition-[height] duration-300 ease-out dark:bg-black/80',
+            view === 'spectrum' ? 'h-32' : 'h-12',
+          )}
+        >
+          {#if view === 'waveform'}
+            <!-- Scrolling / scratchable waveform (drag to scrub). -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              bind:this={waveformContainerEl}
+              class="absolute inset-0 cursor-grab touch-none p-2 outline-none select-none active:cursor-grabbing"
+              role="slider"
+              tabindex="0"
+              aria-label="Seek playback"
+              data-bars={precomputedWaveform.length}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={scrubberValue}
+              onpointerdown={scrub.handlePointerDown}
+              onkeydown={scrub.handleKeyDown}
+              in:fade={{ duration: 200 }}
+              out:fade={{ duration: 150 }}
+            >
+              <div class="relative h-full w-full overflow-hidden">
+                <div
+                  class="absolute left-0"
+                  style:transform="translateX({scrub.offset}px)"
+                  style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
+                  style:width="{displayWidth}px"
+                >
+                  <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+                </div>
               </div>
             </div>
-          </div>
-        {:else if spectrogramReady && spectrogram}
-          <div class="h-32 overflow-hidden rounded-lg bg-foreground/10 dark:bg-black/80">
-            <SpectrumAnalyzer payload={spectrogram} {barColor} {isDark} class="h-full w-full" />
-          </div>
-        {:else}
-          <div class="flex h-32 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
-            {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
-          </div>
-        {/if}
+          {:else if spectrogramReady && spectrogram}
+            <div class="absolute inset-0" in:fade={{ duration: 200 }} out:fade={{ duration: 150 }}>
+              <SpectrumAnalyzer payload={spectrogram} {barColor} {isDark} class="h-full w-full" />
+            </div>
+          {:else}
+            <div
+              class="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground"
+              in:fade={{ duration: 200 }}
+              out:fade={{ duration: 150 }}
+            >
+              {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
 
@@ -397,24 +411,27 @@
       <AudioPlayerTime class="text-xs text-muted-foreground tabular-nums" />
       <AudioPlayerProgress class="flex-1" />
       <AudioPlayerDuration class="text-xs text-muted-foreground tabular-nums" />
-      {#if hasWaveform}
-        <!-- Single button that flips the visualization between waveform and spectrum (shows the target view's icon). -->
-        <Button
-          variant="ghost"
-          size="icon"
-          class="size-8 text-muted-foreground hover:text-foreground"
-          aria-label={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
-          title={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
-          onclick={() => setView(view === 'waveform' ? 'spectrum' : 'waveform')}
-        >
-          {#if view === 'waveform'}
-            <AudioLines class="size-4" />
-          {:else}
-            <AudioWaveform class="size-4" />
-          {/if}
-        </Button>
-      {/if}
-      <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
+      <!-- Keep the two trailing icon controls as a tight cluster. -->
+      <div class="flex items-center">
+        {#if hasWaveform}
+          <!-- Single button that flips the visualization between waveform and spectrum (shows the target view's icon). -->
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-8 text-muted-foreground hover:text-foreground"
+            aria-label={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+            title={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+            onclick={() => setView(view === 'waveform' ? 'spectrum' : 'waveform')}
+          >
+            {#if view === 'waveform'}
+              <AudioLines class="size-4" />
+            {:else}
+              <AudioWaveform class="size-4" />
+            {/if}
+          </Button>
+        {/if}
+        <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
+      </div>
     </div>
 
     <!-- Transport -->
