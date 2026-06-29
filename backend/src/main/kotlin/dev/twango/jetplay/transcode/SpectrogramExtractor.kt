@@ -34,6 +34,7 @@ object SpectrogramExtractor {
     private const val DB_FLOOR = -80f
     private const val DB_CEIL = 0f
     private const val SILENCE_FLOOR = 1e-10
+    private const val MAX_BYTE = 255
 
     // Full-scale tone reads ~0 dBFS: FFT peak ≈ amp * FFT_SIZE * hannCoherentGain(0.5) / 2.
     private const val REF_MAGNITUDE = FFT_SIZE / 4.0
@@ -46,16 +47,19 @@ object SpectrogramExtractor {
         return try {
             grabber.start()
             val sampleRate = grabber.sampleRate
-            if (sampleRate <= 0) return null
+            val maxHz = min(sampleRate / 2, MAX_HZ_CEILING)
             // lengthInTime is unreliable, so the frame loop also enforces the real cap.
             val durationSeconds = grabber.lengthInTime / MICROS_PER_SECOND
-            if (durationSeconds > MAX_DURATION_SECONDS) {
-                log.info("Skipping spectrogram for ${file.name}: ${durationSeconds.roundToInt()}s exceeds cap")
-                return null
+            when {
+                sampleRate <= 0 || maxHz <= MIN_HZ -> null
+
+                durationSeconds > MAX_DURATION_SECONDS -> {
+                    log.info("Skipping spectrogram for ${file.name}: ${durationSeconds.roundToInt()}s exceeds cap")
+                    null
+                }
+
+                else -> sampleToSpectrogram(grabber, sampleRate, maxHz)
             }
-            val maxHz = min(sampleRate / 2, MAX_HZ_CEILING)
-            if (maxHz <= MIN_HZ) return null
-            sampleToSpectrogram(grabber, sampleRate, maxHz)
         } catch (e: Exception) {
             log.warn("Spectrogram extraction failed for ${file.name}", e)
             null
@@ -82,18 +86,25 @@ object SpectrogramExtractor {
         var totalSamples = 0L
         var filled = 0
 
-        outer@ while (!Thread.currentThread().isInterrupted) {
-            val frame = grabber.grabSamples() ?: break
-            val buffer = frame.samples?.firstOrNull() as? ShortBuffer ?: continue
-            while (buffer.hasRemaining()) {
-                window[filled++] = buffer.get() / SHORT_FULL_SCALE
-                totalSamples++
-                if (filled == FFT_SIZE) {
-                    computeColumn(window, hann, re, im, fftMag, loIdx, hiIdx, column)
-                    pool.add(column)
-                    if (++frames >= maxFrames) break@outer
-                    System.arraycopy(window, HOP, window, 0, FFT_SIZE - HOP)
-                    filled = FFT_SIZE - HOP
+        var done = false
+        while (!done && !Thread.currentThread().isInterrupted) {
+            val frame = grabber.grabSamples()
+            if (frame == null) {
+                done = true
+            } else {
+                val buffer = frame.samples?.firstOrNull() as? ShortBuffer
+                while (buffer != null && buffer.hasRemaining() && !done) {
+                    window[filled++] = buffer.get() / SHORT_FULL_SCALE
+                    totalSamples++
+                    if (filled == FFT_SIZE) {
+                        computeColumn(window, hann, re, im, fftMag, loIdx, hiIdx, column)
+                        pool.add(column)
+                        frames++
+                        done = frames >= maxFrames
+                        // Slide the window by one hop, retaining the overlap; harmless on the final frame.
+                        System.arraycopy(window, HOP, window, 0, FFT_SIZE - HOP)
+                        filled = FFT_SIZE - HOP
+                    }
                 }
             }
         }
@@ -165,7 +176,7 @@ object SpectrogramExtractor {
             val src = cols[c]
             val base = c * FREQ_BINS
             for (b in 0 until FREQ_BINS) {
-                out[base + b] = ((src[b] - DB_FLOOR) / span * 255f).roundToInt().coerceIn(0, 255).toByte()
+                out[base + b] = ((src[b] - DB_FLOOR) / span * MAX_BYTE).roundToInt().coerceIn(0, MAX_BYTE).toByte()
             }
         }
         return out
