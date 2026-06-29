@@ -37,7 +37,7 @@ test('the Spectrum view renders the analyzer when data is already present', asyn
   )
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
+  await page.getByRole('button', { name: 'Show spectrum' }).click()
   await expect(page.locator('[data-slot="spectrum-analyzer"] canvas')).toBeAttached()
 })
 
@@ -51,7 +51,7 @@ test('revealing the Spectrum view lazily requests it when no data is present', a
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
+  await page.getByRole('button', { name: 'Show spectrum' }).click()
 
   await expect(page.getByText(/analyz/i)).toBeVisible()
   expect(await page.evaluate(() => (window as any).__spectrogramRequested)).toBe(true)
@@ -64,7 +64,7 @@ test('an unavailable spectrum shows a message instead of the analyzer', async ({
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
+  await page.getByRole('button', { name: 'Show spectrum' }).click()
   await expect(page.getByText(/unavailable/i)).toBeVisible()
   await expect(page.locator('[data-slot="spectrum-analyzer"]')).toHaveCount(0)
 })

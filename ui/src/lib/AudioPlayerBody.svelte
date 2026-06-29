@@ -287,65 +287,28 @@
         {/if}
       {/snippet}
 
-      {#snippet viewToggle()}
-        <div class="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
-          <button
-            type="button"
+      {#if hasMediaInfo}
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          aria-expanded={infoExpanded}
+          aria-controls="media-info-panel"
+          aria-label="Toggle media details"
+          onclick={() => (infoExpanded = !infoExpanded)}
+        >
+          {@render nameAndBadge()}
+          <ChevronDown
             class={cn(
-              'rounded p-1 transition-colors',
-              view === 'waveform' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+              'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
+              infoExpanded && 'rotate-180',
             )}
-            aria-label="Waveform"
-            aria-pressed={view === 'waveform'}
-            title="Waveform"
-            onclick={() => setView('waveform')}
-          >
-            <AudioWaveform class="size-3.5" />
-          </button>
-          <button
-            type="button"
-            class={cn(
-              'rounded p-1 transition-colors',
-              view === 'spectrum' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
-            )}
-            aria-label="Spectrum"
-            aria-pressed={view === 'spectrum'}
-            title="Spectrum"
-            onclick={() => setView('spectrum')}
-          >
-            <AudioLines class="size-3.5" />
-          </button>
+          />
+        </button>
+      {:else}
+        <div class="flex items-center gap-2">
+          {@render nameAndBadge()}
         </div>
-      {/snippet}
-
-      <div class="flex items-center gap-2">
-        {#if hasMediaInfo}
-          <button
-            type="button"
-            class="flex min-w-0 flex-1 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-            aria-expanded={infoExpanded}
-            aria-controls="media-info-panel"
-            aria-label="Toggle media details"
-            onclick={() => (infoExpanded = !infoExpanded)}
-          >
-            {@render nameAndBadge()}
-            <ChevronDown
-              class={cn(
-                'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
-                infoExpanded && 'rotate-180',
-              )}
-            />
-          </button>
-        {:else}
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            {@render nameAndBadge()}
-          </div>
-        {/if}
-
-        {#if hasWaveform}
-          {@render viewToggle()}
-        {/if}
-      </div>
+      {/if}
 
       {#if summaryLine}
         <div
@@ -434,6 +397,23 @@
       <AudioPlayerTime class="text-xs text-muted-foreground tabular-nums" />
       <AudioPlayerProgress class="flex-1" />
       <AudioPlayerDuration class="text-xs text-muted-foreground tabular-nums" />
+      {#if hasWaveform}
+        <!-- Single button that flips the visualization between waveform and spectrum (shows the target view's icon). -->
+        <Button
+          variant="ghost"
+          size="icon"
+          class="size-8 text-muted-foreground hover:text-foreground"
+          aria-label={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+          title={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+          onclick={() => setView(view === 'waveform' ? 'spectrum' : 'waveform')}
+        >
+          {#if view === 'waveform'}
+            <AudioLines class="size-4" />
+          {:else}
+            <AudioWaveform class="size-4" />
+          {/if}
+        </Button>
+      {/if}
       <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
     </div>
 
