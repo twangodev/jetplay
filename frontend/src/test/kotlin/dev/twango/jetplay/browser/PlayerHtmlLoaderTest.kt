@@ -6,8 +6,8 @@ import org.junit.Test
 
 class PlayerHtmlLoaderTest {
 
-    private fun buildScript(config: PlayerConfig, openLinkJs: String = ""): String =
-        PlayerHtmlLoader.buildConfigScript(config, openLinkJs)
+    private fun buildScript(config: PlayerConfig, openLinkJs: String = "", spectrogramRequestJs: String = ""): String =
+        PlayerHtmlLoader.buildConfigScript(config, openLinkJs, spectrogramRequestJs)
 
     @Test
     fun wrapsInScriptTags() {
@@ -99,5 +99,11 @@ class PlayerHtmlLoaderTest {
     fun includesOpenLinkJs() {
         val result = buildScript(PlayerConfig(), openLinkJs = "console.log(url)")
         assertTrue(result.contains("window.jetplayOpenLink = function(url) { console.log(url) }"))
+    }
+
+    @Test
+    fun includesSpectrogramRequestJs() {
+        val result = buildScript(PlayerConfig(), spectrogramRequestJs = "requestIt()")
+        assertTrue(result.contains("window.jetplayRequestSpectrogram = function() { requestIt() }"))
     }
 }

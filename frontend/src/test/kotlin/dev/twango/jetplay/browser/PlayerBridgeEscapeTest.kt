@@ -2,6 +2,7 @@ package dev.twango.jetplay.browser
 
 import dev.twango.jetplay.media.MediaInfo
 import dev.twango.jetplay.media.MediaTag
+import dev.twango.jetplay.media.Spectrogram
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -99,5 +100,41 @@ class PlayerBridgeEscapeTest {
     fun mediaInfoJsonReturnsNullWhenEverythingIsEmpty() {
         val empty = MediaInfo(null, null, null, null, null, null, null, null, null)
         assertNull(PlayerBridge.mediaInfoJson(empty))
+    }
+
+    // --- spectrogram JSON serialization (carries a base64 magnitude matrix) ---
+
+    @Test
+    fun spectrogramJsonForNullSignalsUnavailable() {
+        assertEquals("{\"ok\":false}", PlayerBridge.spectrogramJson(null))
+    }
+
+    @Test
+    fun spectrogramJsonEncodesHeaderAndBase64Matrix() {
+        val spec = Spectrogram(
+            timeCols = 2,
+            freqBins = 2,
+            durationMs = 1000,
+            sampleRateHz = 44100,
+            minHz = 20,
+            maxHz = 20000,
+            dbFloor = -80f,
+            dbCeil = 0f,
+            logFreq = true,
+            magnitudes = byteArrayOf(0, 127, -1, 64),
+        )
+        val json = PlayerBridge.spectrogramJson(spec)
+        assertTrue(json.contains("\"ok\":true"))
+        assertTrue(json.contains("\"timeCols\":2"))
+        assertTrue(json.contains("\"freqBins\":2"))
+        assertTrue(json.contains("\"durationMs\":1000"))
+        assertTrue(json.contains("\"sampleRateHz\":44100"))
+        assertTrue(json.contains("\"minHz\":20"))
+        assertTrue(json.contains("\"maxHz\":20000"))
+        assertTrue(json.contains("\"dbFloor\":-80.0"))
+        assertTrue(json.contains("\"dbCeil\":0.0"))
+        assertTrue(json.contains("\"logFreq\":true"))
+        // Base64 of [0x00, 0x7F, 0xFF, 0x40].
+        assertTrue(json.contains("\"data\":\"AH//QA==\""))
     }
 }

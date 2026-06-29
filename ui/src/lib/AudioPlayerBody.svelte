@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte'
   import { fade, slide } from 'svelte/transition'
   import { Slider as SliderPrimitive } from 'bits-ui'
-  import { ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
+  import { AudioLines, AudioWaveform, ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
   import {
     AudioGraph,
     AudioPlayerButton,
@@ -15,6 +15,7 @@
   } from '$lib/components/ui/audio-player/index.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Waveform } from '$lib/components/ui/waveform/index.js'
+  import { SpectrumAnalyzer } from '$lib/components/ui/spectrum/index.js'
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
   import { formatTime } from './formatTime'
@@ -27,12 +28,14 @@
     extension,
     waveform = [],
     mediaInfo,
+    spectrogram,
   }: {
     src: string
     fileName: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
+    spectrogram?: SpectrogramData
   } = $props()
 
   const player = useAudioPlayer<{ name: string }>()
@@ -98,6 +101,24 @@
 
   // Gate the chevron on real content, so an empty push never expands into nothing.
   const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
+
+  // The waveform and the spectrum analyzer share the visualization slot. The analyzer's data is heavy,
+  // so it's requested from the IDE only the first time the user switches to it.
+  let view = $state<'waveform' | 'spectrum'>('waveform')
+  let spectrogramRequested = false
+  const spectrogramUnavailable = $derived(spectrogram?.ok === false)
+  // The spectrum is a lazy backend RPC, independent of the waveform — so its availability must not be
+  // coupled to whether bars arrived (e.g. remote files where the in-browser waveform fallback is skipped).
+  const canRequestSpectrum = typeof window.jetplayRequestSpectrogram === 'function'
+  const showVisualization = $derived(hasWaveform || canRequestSpectrum || spectrogram !== undefined)
+
+  function setView(next: 'waveform' | 'spectrum') {
+    view = next
+    if (next === 'spectrum' && spectrogram === undefined && !spectrogramRequested) {
+      spectrogramRequested = true
+      window.jetplayRequestSpectrogram?.()
+    }
+  }
 
   // Track the IDE theme via prefers-color-scheme (dark unless prefers-light).
   let isDark = $state(true)
@@ -332,34 +353,58 @@
       {/if}
     </div>
 
-    <!-- Scrolling / scratchable waveform (drag to scrub). Mounts once bars exist. -->
-    {#if hasWaveform}
+    <!-- Visualization: waveform scrubber or live spectrum analyzer (the spectrum is reachable even without bars). -->
+    {#if showVisualization}
       <div transition:slide={{ duration: 450 }}>
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- Shared lane: height eases between views; the two views crossfade over it. -->
         <div
-          bind:this={waveformContainerEl}
-          class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
-          role="slider"
-          tabindex="0"
-          aria-label="Seek playback"
-          data-bars={precomputedWaveform.length}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={scrubberValue}
-          onpointerdown={scrub.handlePointerDown}
-          onkeydown={scrub.handleKeyDown}
+          class={cn(
+            'relative overflow-hidden rounded-lg bg-foreground/10 transition-[height] duration-300 ease-out dark:bg-black/80',
+            view === 'spectrum' ? 'h-32' : 'h-12',
+          )}
         >
-          <div class="relative h-full w-full overflow-hidden">
+          {#if view === 'waveform'}
+            <!-- Scrolling / scratchable waveform (drag to scrub). -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
-              style:transform="translateX({scrub.offset}px)"
-              style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
-              style:width="{displayWidth}px"
-              style:position="absolute"
-              style:left="0"
+              bind:this={waveformContainerEl}
+              class="absolute inset-0 cursor-grab touch-none rounded-lg p-2 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:cursor-grabbing"
+              role="slider"
+              tabindex="0"
+              aria-label="Seek playback"
+              data-bars={precomputedWaveform.length}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={scrubberValue}
+              onpointerdown={scrub.handlePointerDown}
+              onkeydown={scrub.handleKeyDown}
+              in:fade={{ duration: 200 }}
+              out:fade={{ duration: 150 }}
             >
-              <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+              <div class="relative h-full w-full overflow-hidden">
+                <div
+                  class="absolute left-0"
+                  style:transform="translateX({scrub.offset}px)"
+                  style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
+                  style:width="{displayWidth}px"
+                >
+                  <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+                </div>
+              </div>
             </div>
-          </div>
+          {:else if spectrogram?.ok}
+            <div class="absolute inset-0" in:fade={{ duration: 200 }} out:fade={{ duration: 150 }}>
+              <SpectrumAnalyzer payload={spectrogram} {barColor} {isDark} class="h-full w-full" />
+            </div>
+          {:else}
+            <div
+              class="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground"
+              in:fade={{ duration: 200 }}
+              out:fade={{ duration: 150 }}
+            >
+              {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
@@ -369,7 +414,27 @@
       <AudioPlayerTime class="text-xs text-muted-foreground tabular-nums" />
       <AudioPlayerProgress class="flex-1" />
       <AudioPlayerDuration class="text-xs text-muted-foreground tabular-nums" />
-      <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
+      <!-- Keep the two trailing icon controls as a tight cluster. -->
+      <div class="flex items-center">
+        {#if showVisualization}
+          <!-- Single button that flips the visualization between waveform and spectrum (shows the target view's icon). -->
+          <Button
+            variant="ghost"
+            size="icon"
+            class="size-8 text-muted-foreground hover:text-foreground"
+            aria-label={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+            title={view === 'waveform' ? 'Show spectrum' : 'Show waveform'}
+            onclick={() => setView(view === 'waveform' ? 'spectrum' : 'waveform')}
+          >
+            {#if view === 'waveform'}
+              <AudioLines class="size-4" />
+            {:else}
+              <AudioWaveform class="size-4" />
+            {/if}
+          </Button>
+        {/if}
+        <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
+      </div>
     </div>
 
     <!-- Transport -->

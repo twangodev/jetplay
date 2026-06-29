@@ -88,6 +88,9 @@ class MediaLoader(
     private val fileId by lazy { source.file.rpcId() }
     private val projectId by lazy { project.projectId() }
 
+    // Guards the one-shot lazy spectrogram compute against duplicate reveal requests.
+    private val spectrogramRequested = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun load() {
         when {
             source.needsTranscoding -> startTranscoding()
@@ -95,6 +98,29 @@ class MediaLoader(
         }
         maybeSendWaveform()
         maybeSendMediaInfo()
+        wireSpectrogram()
+    }
+
+    private fun wireSpectrogram() {
+        // Video uses the video player, which has no spectrogram lane.
+        if (source.isVideo) return
+        bridge.onSpectrogramRequest = { requestSpectrogram() }
+    }
+
+    // Computed on first reveal rather than on open: a full STFT decode is too heavy to run for every audio file.
+    // No isRemote guard: extraction runs on the host, which resolves the file by id even when it's remote to
+    // this client. A genuinely unresolvable source just comes back null below.
+    private fun requestSpectrogram() {
+        if (!spectrogramRequested.compareAndSet(false, true)) return
+        // Headerless raw codecs lack the demuxer hints to decode cleanly, so skip them outright.
+        if (source.extension.lowercase() in MediaClassification.rawAudioExtensions) {
+            if (!bridge.disposed) bridge.sendSpectrogram(null)
+            return
+        }
+        scope.launch {
+            val spec = MediaAccessor.getInstance().extractSpectrogram(fileId, projectId)
+            if (!bridge.disposed) bridge.sendSpectrogram(spec)
+        }
     }
 
     private fun maybeSendWaveform() {
