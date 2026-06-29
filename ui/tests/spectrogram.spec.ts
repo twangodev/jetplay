@@ -38,7 +38,9 @@ test('spectrogram toggle reveals the heatmap when data is already present', asyn
   await page.goto('/')
 
   await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
-  await expect(page.locator('[data-slot="spectrogram"]')).toBeVisible()
+  // The heatmap lives inside the scrub scroller (may be translated out of the clip box at t=0),
+  // so assert it mounted with a backing canvas rather than relying on viewport visibility.
+  await expect(page.locator('[data-slot="spectrogram"] canvas')).toBeAttached()
 })
 
 test('revealing the spectrogram lazily requests it when no data is present', async ({ page }) => {

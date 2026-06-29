@@ -5,4 +5,4 @@ export {
 	//
 	Root as Spectrogram,
 };
-export { magmaLut } from "./colormap.js";
+export { intensityLut } from "./colormap.js";

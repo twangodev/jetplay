@@ -379,45 +379,45 @@
           </button>
         </div>
 
-        <!-- Shared lane -->
-        {#if view === 'waveform'}
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            bind:this={waveformContainerEl}
-            class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
-            role="slider"
-            tabindex="0"
-            aria-label="Seek playback"
-            data-bars={precomputedWaveform.length}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={scrubberValue}
-            onpointerdown={scrub.handlePointerDown}
-            onkeydown={scrub.handleKeyDown}
-          >
-            <div class="relative h-full w-full overflow-hidden">
-              <div
-                style:transform="translateX({scrub.offset}px)"
-                style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
-                style:width="{displayWidth}px"
-                style:position="absolute"
-                style:left="0"
-              >
+        <!-- Shared scrub lane: waveform and spectrogram scroll in lockstep via the same offset. -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          bind:this={waveformContainerEl}
+          class={cn(
+            'relative cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none transition-[height] duration-300 select-none active:cursor-grabbing dark:bg-black/80',
+            view === 'spectrogram' ? 'h-28' : 'h-12',
+          )}
+          role="slider"
+          tabindex="0"
+          aria-label="Seek playback"
+          data-bars={precomputedWaveform.length}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={scrubberValue}
+          onpointerdown={scrub.handlePointerDown}
+          onkeydown={scrub.handleKeyDown}
+        >
+          <div class="relative h-full w-full overflow-hidden">
+            <div
+              class="absolute left-0 h-full"
+              style:transform="translateX({scrub.offset}px)"
+              style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
+              style:width="{displayWidth}px"
+            >
+              {#if view === 'waveform'}
                 <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
-              </div>
+              {:else if spectrogramReady && spectrogram}
+                <Spectrogram payload={spectrogram} {barColor} {isDark} />
+              {/if}
             </div>
           </div>
-        {:else if spectrogramReady && spectrogram}
-          <Spectrogram payload={spectrogram} height={160} class="rounded-lg bg-black/80" />
-        {:else if spectrogramUnavailable}
-          <div class="flex h-40 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
-            Spectrogram unavailable for this file
-          </div>
-        {:else}
-          <div class="flex h-40 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
-            Analyzing audio&hellip;
-          </div>
-        {/if}
+
+          {#if view === 'spectrogram' && !spectrogramReady}
+            <div class="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
+              {spectrogramUnavailable ? 'Spectrogram unavailable for this file' : 'Analyzing audio…'}
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
 

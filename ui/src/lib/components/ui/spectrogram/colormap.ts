@@ -1,28 +1,50 @@
-// Polynomial approximation of matplotlib's perceptual "magma" colormap
-// (public-domain fit by Matt Zucker / Anton Mikhailov). Avoids shipping a 768-value table.
-function magma(t: number): [number, number, number] {
-  const c0 = [-0.002136485053939, -0.000749655052795, -0.005386127855323]
-  const c1 = [0.251820737525015, 0.677511465739363, 2.494026599323373]
-  const c2 = [8.353717279216625, -3.577719514958484, 0.327827456607890]
-  const c3 = [-27.66873308576866, 14.26473078096533, -13.64921318813922]
-  const c4 = [52.17613981234068, -27.94360607168351, 12.94416944238394]
-  const c5 = [-50.76852536473588, 29.04658282127291, 4.23415299384598]
-  const c6 = [18.65570506591883, -11.48977351997711, -5.601961508734096]
-  const ch = (i: number) =>
-    c0[i] + t * (c1[i] + t * (c2[i] + t * (c3[i] + t * (c4[i] + t * (c5[i] + t * c6[i])))))
-  return [ch(0), ch(1), ch(2)]
+// The spectrogram is tinted with the player's own foreground colour (like the waveform bars) rather
+// than a rainbow heatmap, so it reads as part of the same UI. Magnitude drives opacity; the hottest
+// cells brighten toward white (dark theme) or black (light theme) so peaks still stand out.
+
+/** Parse `#rgb`, `#rrggbb`, or `rgb(r,g,b)` into `[r, g, b]`; falls back to zinc-400. */
+export function parseRgb(color: string): [number, number, number] {
+  const c = color.trim()
+  if (c.startsWith('#')) {
+    const hex = c.slice(1)
+    const full = hex.length === 3 ? hex.split('').map((x) => x + x).join('') : hex
+    const n = parseInt(full, 16)
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  }
+  const m = c.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/)
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])]
+  return [161, 161, 170]
 }
 
-const toByte = (v: number) => Math.max(0, Math.min(255, Math.round(v * 255)))
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-/** 256-entry RGB lookup table (length 768): `lut[i*3 + {0,1,2}]` for intensity `i`. */
-export function magmaLut(): Uint8Array {
-  const lut = new Uint8Array(256 * 3)
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
+
+const NOISE_FLOOR = 0.1 // magnitudes below this fade to fully transparent for clean blacks
+const ALPHA_GAMMA = 0.85
+const DIM_BASE = 0.45 // how dark the colour is at low energy (vs full foreground)
+const HOT_START = 0.62 // where peaks start blooming toward white/black
+const HOT_STRENGTH = 0.95
+
+/** 256-entry RGBA lookup table indexed by magnitude byte; `lut[i*4 + {0,1,2,3}]`. */
+export function intensityLut(foreground: string, isDark: boolean): Uint8Array {
+  const [r, g, b] = parseRgb(foreground)
+  const peak = isDark ? 255 : 8
+  const lut = new Uint8Array(256 * 4)
   for (let i = 0; i < 256; i++) {
-    const [r, g, b] = magma(i / 255)
-    lut[i * 3] = toByte(r)
-    lut[i * 3 + 1] = toByte(g)
-    lut[i * 3 + 2] = toByte(b)
+    const t = i / 255
+    const alpha = Math.pow(clamp01((t - NOISE_FLOOR) / (1 - NOISE_FLOOR)), ALPHA_GAMMA)
+    const lum = DIM_BASE + (1 - DIM_BASE) * Math.pow(t, 0.75) // dim at low energy, full colour by mid
+    const hot = smoothstep(HOT_START, 1, t) * HOT_STRENGTH // bloom toward the peak colour at the top
+    lut[i * 4] = Math.round(lerp(r * lum, peak, hot))
+    lut[i * 4 + 1] = Math.round(lerp(g * lum, peak, hot))
+    lut[i * 4 + 2] = Math.round(lerp(b * lum, peak, hot))
+    lut[i * 4 + 3] = Math.round(alpha * 255)
   }
   return lut
 }
