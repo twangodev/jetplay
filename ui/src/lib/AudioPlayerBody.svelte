@@ -102,16 +102,16 @@
   // Gate the chevron on real content, so an empty push never expands into nothing.
   const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
 
-  // Spectrogram is opt-in and heavy, so it's requested from the IDE only on first reveal.
-  let showSpectrogram = $state(false)
+  // Waveform and spectrogram are two views of one lane. The spectrogram is heavy, so it's requested
+  // from the IDE only the first time the user switches to it.
+  let view = $state<'waveform' | 'spectrogram'>('waveform')
   let spectrogramRequested = false
   const spectrogramReady = $derived(spectrogram?.ok === true)
   const spectrogramUnavailable = $derived(spectrogram?.ok === false)
-  const spectrogramLoading = $derived(showSpectrogram && spectrogram === undefined)
 
-  function toggleSpectrogram() {
-    showSpectrogram = !showSpectrogram
-    if (showSpectrogram && spectrogram === undefined && !spectrogramRequested) {
+  function setView(next: 'waveform' | 'spectrogram') {
+    view = next
+    if (next === 'spectrogram' && spectrogram === undefined && !spectrogramRequested) {
       spectrogramRequested = true
       window.jetplayRequestSpectrogram?.()
     }
@@ -350,68 +350,76 @@
       {/if}
     </div>
 
-    <!-- Scrolling / scratchable waveform (drag to scrub). Mounts once bars exist. -->
+    <!-- Visualization: waveform and spectrogram are two views of one lane. Mounts once bars exist. -->
     {#if hasWaveform}
-      <div transition:slide={{ duration: 450 }}>
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          bind:this={waveformContainerEl}
-          class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
-          role="slider"
-          tabindex="0"
-          aria-label="Seek playback"
-          data-bars={precomputedWaveform.length}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={scrubberValue}
-          onpointerdown={scrub.handlePointerDown}
-          onkeydown={scrub.handleKeyDown}
-        >
-          <div class="relative h-full w-full overflow-hidden">
-            <div
-              style:transform="translateX({scrub.offset}px)"
-              style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
-              style:width="{displayWidth}px"
-              style:position="absolute"
-              style:left="0"
-            >
-              <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+      <div class="space-y-2" transition:slide={{ duration: 450 }}>
+        <!-- View toggle -->
+        <div class="inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5 text-xs">
+          <button
+            type="button"
+            class={cn(
+              'rounded-md px-2.5 py-1 font-medium transition-colors',
+              view === 'waveform' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+            aria-pressed={view === 'waveform'}
+            onclick={() => setView('waveform')}
+          >
+            Waveform
+          </button>
+          <button
+            type="button"
+            class={cn(
+              'rounded-md px-2.5 py-1 font-medium transition-colors',
+              view === 'spectrogram' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+            aria-pressed={view === 'spectrogram'}
+            onclick={() => setView('spectrogram')}
+          >
+            Spectrogram
+          </button>
+        </div>
+
+        <!-- Shared lane -->
+        {#if view === 'waveform'}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            bind:this={waveformContainerEl}
+            class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
+            role="slider"
+            tabindex="0"
+            aria-label="Seek playback"
+            data-bars={precomputedWaveform.length}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={scrubberValue}
+            onpointerdown={scrub.handlePointerDown}
+            onkeydown={scrub.handleKeyDown}
+          >
+            <div class="relative h-full w-full overflow-hidden">
+              <div
+                style:transform="translateX({scrub.offset}px)"
+                style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
+                style:width="{displayWidth}px"
+                style:position="absolute"
+                style:left="0"
+              >
+                <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
+              </div>
             </div>
           </div>
-        </div>
+        {:else if spectrogramReady && spectrogram}
+          <Spectrogram payload={spectrogram} height={160} class="rounded-lg bg-black/80" />
+        {:else if spectrogramUnavailable}
+          <div class="flex h-40 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
+            Spectrogram unavailable for this file
+          </div>
+        {:else}
+          <div class="flex h-40 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
+            Analyzing audio&hellip;
+          </div>
+        {/if}
       </div>
     {/if}
-
-    <!-- Spectrogram (opt-in; the IDE computes it lazily on first reveal) -->
-    <div class="space-y-2">
-      <button
-        type="button"
-        class="flex w-full items-center gap-2 rounded-sm text-left text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-        aria-expanded={showSpectrogram}
-        aria-controls="spectrogram-panel"
-        aria-label="Toggle spectrogram"
-        onclick={toggleSpectrogram}
-      >
-        <span class="font-medium">Spectrogram</span>
-        <ChevronDown class={cn('ml-auto size-4 shrink-0 transition-transform', showSpectrogram && 'rotate-180')} />
-      </button>
-
-      {#if showSpectrogram}
-        <div id="spectrogram-panel" transition:slide={{ duration: 250 }}>
-          {#if spectrogramReady && spectrogram}
-            <Spectrogram payload={spectrogram} height={160} class="rounded-lg bg-black/80" />
-          {:else if spectrogramUnavailable}
-            <div class="rounded-lg bg-foreground/5 p-4 text-center text-xs text-muted-foreground">
-              Spectrogram unavailable for this file
-            </div>
-          {:else if spectrogramLoading}
-            <div class="rounded-lg bg-foreground/5 p-4 text-center text-xs text-muted-foreground">
-              Analyzing audio&hellip;
-            </div>
-          {/if}
-        </div>
-      {/if}
-    </div>
 
     <!-- Time / scrub / duration / speed -->
     <div class="flex items-center gap-2">

@@ -11,6 +11,8 @@ const readyAudio = {
   fileExtension: 'mp3',
   mediaUrl: '/assets/sintel.mp3',
   isVideo: false,
+  // Seed bars so the visualization lane (and its Waveform/Spectrogram toggle) renders deterministically.
+  waveform: Array.from({ length: 40 }, () => 0.5),
 }
 
 test('spectrogram toggle reveals the heatmap when data is already present', async ({ page }) => {
@@ -35,7 +37,7 @@ test('spectrogram toggle reveals the heatmap when data is already present', asyn
   )
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Toggle spectrogram' }).click()
+  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
   await expect(page.locator('[data-slot="spectrogram"]')).toBeVisible()
 })
 
@@ -49,7 +51,7 @@ test('revealing the spectrogram lazily requests it when no data is present', asy
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Toggle spectrogram' }).click()
+  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
 
   await expect(page.getByText(/analyz/i)).toBeVisible()
   expect(await page.evaluate(() => (window as any).__spectrogramRequested)).toBe(true)
@@ -62,7 +64,7 @@ test('an unavailable spectrogram shows a message instead of a heatmap', async ({
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Toggle spectrogram' }).click()
+  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
   await expect(page.getByText(/unavailable/i)).toBeVisible()
   await expect(page.locator('[data-slot="spectrogram"]')).toHaveCount(0)
 })
