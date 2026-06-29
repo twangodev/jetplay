@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte'
   import { fade, slide } from 'svelte/transition'
   import { Slider as SliderPrimitive } from 'bits-ui'
-  import { ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
+  import { AudioLines, AudioWaveform, ChevronDown, SkipBack, SkipForward, Volume, Volume1, Volume2, VolumeX } from '@lucide/svelte'
   import {
     AudioGraph,
     AudioPlayerButton,
@@ -287,28 +287,65 @@
         {/if}
       {/snippet}
 
-      {#if hasMediaInfo}
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-          aria-expanded={infoExpanded}
-          aria-controls="media-info-panel"
-          aria-label="Toggle media details"
-          onclick={() => (infoExpanded = !infoExpanded)}
-        >
-          {@render nameAndBadge()}
-          <ChevronDown
+      {#snippet viewToggle()}
+        <div class="flex shrink-0 items-center gap-0.5 rounded-md border border-border p-0.5">
+          <button
+            type="button"
             class={cn(
-              'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
-              infoExpanded && 'rotate-180',
+              'rounded p-1 transition-colors',
+              view === 'waveform' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
-          />
-        </button>
-      {:else}
-        <div class="flex items-center gap-2">
-          {@render nameAndBadge()}
+            aria-label="Waveform"
+            aria-pressed={view === 'waveform'}
+            title="Waveform"
+            onclick={() => setView('waveform')}
+          >
+            <AudioWaveform class="size-3.5" />
+          </button>
+          <button
+            type="button"
+            class={cn(
+              'rounded p-1 transition-colors',
+              view === 'spectrum' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+            )}
+            aria-label="Spectrum"
+            aria-pressed={view === 'spectrum'}
+            title="Spectrum"
+            onclick={() => setView('spectrum')}
+          >
+            <AudioLines class="size-3.5" />
+          </button>
         </div>
-      {/if}
+      {/snippet}
+
+      <div class="flex items-center gap-2">
+        {#if hasMediaInfo}
+          <button
+            type="button"
+            class="flex min-w-0 flex-1 items-center gap-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            aria-expanded={infoExpanded}
+            aria-controls="media-info-panel"
+            aria-label="Toggle media details"
+            onclick={() => (infoExpanded = !infoExpanded)}
+          >
+            {@render nameAndBadge()}
+            <ChevronDown
+              class={cn(
+                'ml-auto size-4 shrink-0 text-muted-foreground transition-transform',
+                infoExpanded && 'rotate-180',
+              )}
+            />
+          </button>
+        {:else}
+          <div class="flex min-w-0 flex-1 items-center gap-2">
+            {@render nameAndBadge()}
+          </div>
+        {/if}
+
+        {#if hasWaveform}
+          {@render viewToggle()}
+        {/if}
+      </div>
 
       {#if summaryLine}
         <div
@@ -352,7 +389,7 @@
 
     <!-- Visualization: waveform scrubber or live spectrum analyzer. Mounts once bars exist. -->
     {#if hasWaveform}
-      <div class="relative" transition:slide={{ duration: 450 }}>
+      <div transition:slide={{ duration: 450 }}>
         {#if view === 'waveform'}
           <!-- Scrolling / scratchable waveform (drag to scrub). -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -389,32 +426,6 @@
             {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
           </div>
         {/if}
-
-        <!-- View toggle floats over the lane's corner so it doesn't claim its own row. -->
-        <div class="absolute right-1.5 top-1.5 z-10 inline-flex items-center gap-0.5 rounded-md border border-border bg-background/70 p-0.5 text-[11px] shadow-sm backdrop-blur-sm">
-          <button
-            type="button"
-            class={cn(
-              'rounded px-2 py-0.5 font-medium transition-colors',
-              view === 'waveform' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
-            )}
-            aria-pressed={view === 'waveform'}
-            onclick={() => setView('waveform')}
-          >
-            Waveform
-          </button>
-          <button
-            type="button"
-            class={cn(
-              'rounded px-2 py-0.5 font-medium transition-colors',
-              view === 'spectrum' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
-            )}
-            aria-pressed={view === 'spectrum'}
-            onclick={() => setView('spectrum')}
-          >
-            Spectrum
-          </button>
-        </div>
       </div>
     {/if}
 
