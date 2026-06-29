@@ -23,9 +23,16 @@
   let canvasEl: HTMLCanvasElement | null = $state(null)
 
   const FREQ_TICKS: [number, string][] = [
+    [20, '20'],
+    [50, '50'],
     [100, '100'],
+    [200, '200'],
+    [500, '500'],
     [1000, '1k'],
+    [2000, '2k'],
+    [5000, '5k'],
     [10000, '10k'],
+    [20000, '20k'],
   ]
   const DB_TICKS = [-20, -40, -60]
   const RELEASE = 0.3 // how fast the curve falls (1 = instant); rises are instant
@@ -102,10 +109,11 @@
 
       ctx.clearRect(0, 0, cssW, cssH)
 
-      // dB gridlines + labels
+      // dB gridlines + labels (left axis, dBFS)
       ctx.lineWidth = 1
       ctx.font = '10px ui-sans-serif, system-ui, sans-serif'
       ctx.textBaseline = 'middle'
+      ctx.textAlign = 'left'
       for (const db of DB_TICKS) {
         const y = yOf((db - dbFloor) / (dbCeil - dbFloor))
         ctx.strokeStyle = grid(0.1)
@@ -113,23 +121,28 @@
         ctx.moveTo(0, y)
         ctx.lineTo(cssW, y)
         ctx.stroke()
-        ctx.fillStyle = grid(0.5)
-        ctx.fillText(`${db}`, 3, y)
+        ctx.fillStyle = grid(0.55)
+        ctx.fillText(`${db} dB`, 3, y)
       }
 
-      // frequency gridlines + labels
+      // frequency gridlines + labels (log Hz axis)
       ctx.textBaseline = 'alphabetic'
       for (const [hz, label] of FREQ_TICKS) {
-        if (hz <= minHz || hz >= maxHz) continue
+        if (hz < minHz || hz > maxHz) continue
         const x = freqToX(hz)
-        ctx.strokeStyle = grid(0.1)
-        ctx.beginPath()
-        ctx.moveTo(x, PAD_TOP)
-        ctx.lineTo(x, cssH - PAD_BOTTOM)
-        ctx.stroke()
-        ctx.fillStyle = grid(0.5)
-        ctx.fillText(label, x + 3, cssH - 4)
+        if (x > 1 && x < cssW - 1) {
+          ctx.strokeStyle = grid(0.1)
+          ctx.beginPath()
+          ctx.moveTo(x, PAD_TOP)
+          ctx.lineTo(x, cssH - PAD_BOTTOM)
+          ctx.stroke()
+        }
+        ctx.fillStyle = grid(0.55)
+        ctx.textAlign = x < 12 ? 'left' : x > cssW - 12 ? 'right' : 'center'
+        const labelX = x < 12 ? 2 : x > cssW - 12 ? cssW - 2 : x
+        ctx.fillText(label, labelX, cssH - 3)
       }
+      ctx.textAlign = 'left'
 
       // filled spectrum
       ctx.beginPath()
