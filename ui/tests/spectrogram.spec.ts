@@ -11,11 +11,11 @@ const readyAudio = {
   fileExtension: 'mp3',
   mediaUrl: '/assets/sintel.mp3',
   isVideo: false,
-  // Seed bars so the visualization lane (and its Waveform/Spectrogram toggle) renders deterministically.
+  // Seed bars so the visualization lane (and its Waveform/Spectrum toggle) renders deterministically.
   waveform: Array.from({ length: 40 }, () => 0.5),
 }
 
-test('spectrogram toggle reveals the heatmap when data is already present', async ({ page }) => {
+test('the Spectrum view renders the analyzer when data is already present', async ({ page }) => {
   await page.addInitScript(
     ([cfg, data]) => {
       ;(window as any).jetplay = cfg
@@ -37,13 +37,11 @@ test('spectrogram toggle reveals the heatmap when data is already present', asyn
   )
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
-  // The heatmap lives inside the scrub scroller (may be translated out of the clip box at t=0),
-  // so assert it mounted with a backing canvas rather than relying on viewport visibility.
-  await expect(page.locator('[data-slot="spectrogram"] canvas')).toBeAttached()
+  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
+  await expect(page.locator('[data-slot="spectrum-analyzer"] canvas')).toBeAttached()
 })
 
-test('revealing the spectrogram lazily requests it when no data is present', async ({ page }) => {
+test('revealing the Spectrum view lazily requests it when no data is present', async ({ page }) => {
   await page.addInitScript((cfg) => {
     ;(window as any).jetplay = cfg
     ;(window as any).__spectrogramRequested = false
@@ -53,20 +51,20 @@ test('revealing the spectrogram lazily requests it when no data is present', asy
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
+  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
 
   await expect(page.getByText(/analyz/i)).toBeVisible()
   expect(await page.evaluate(() => (window as any).__spectrogramRequested)).toBe(true)
 })
 
-test('an unavailable spectrogram shows a message instead of a heatmap', async ({ page }) => {
+test('an unavailable spectrum shows a message instead of the analyzer', async ({ page }) => {
   await page.addInitScript((cfg) => {
     ;(window as any).jetplay = cfg
     ;(window as any).__jetplaySpectrogram = { ok: false }
   }, readyAudio)
   await page.goto('/')
 
-  await page.getByRole('button', { name: 'Spectrogram', exact: true }).click()
+  await page.getByRole('button', { name: 'Spectrum', exact: true }).click()
   await expect(page.getByText(/unavailable/i)).toBeVisible()
-  await expect(page.locator('[data-slot="spectrogram"]')).toHaveCount(0)
+  await expect(page.locator('[data-slot="spectrum-analyzer"]')).toHaveCount(0)
 })

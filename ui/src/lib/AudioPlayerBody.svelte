@@ -15,7 +15,7 @@
   } from '$lib/components/ui/audio-player/index.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Waveform } from '$lib/components/ui/waveform/index.js'
-  import { Spectrogram } from '$lib/components/ui/spectrogram/index.js'
+  import { SpectrumAnalyzer } from '$lib/components/ui/spectrum/index.js'
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
   import { formatTime } from './formatTime'
@@ -102,16 +102,16 @@
   // Gate the chevron on real content, so an empty push never expands into nothing.
   const hasMediaInfo = $derived(infoRows.length > 0 || tags.length > 0)
 
-  // Waveform and spectrogram are two views of one lane. The spectrogram is heavy, so it's requested
-  // from the IDE only the first time the user switches to it.
-  let view = $state<'waveform' | 'spectrogram'>('waveform')
+  // The waveform and the spectrum analyzer share the visualization slot. The analyzer's data is heavy,
+  // so it's requested from the IDE only the first time the user switches to it.
+  let view = $state<'waveform' | 'spectrum'>('waveform')
   let spectrogramRequested = false
   const spectrogramReady = $derived(spectrogram?.ok === true)
   const spectrogramUnavailable = $derived(spectrogram?.ok === false)
 
-  function setView(next: 'waveform' | 'spectrogram') {
+  function setView(next: 'waveform' | 'spectrum') {
     view = next
-    if (next === 'spectrogram' && spectrogram === undefined && !spectrogramRequested) {
+    if (next === 'spectrum' && spectrogram === undefined && !spectrogramRequested) {
       spectrogramRequested = true
       window.jetplayRequestSpectrogram?.()
     }
@@ -350,7 +350,7 @@
       {/if}
     </div>
 
-    <!-- Visualization: waveform and spectrogram are two views of one lane. Mounts once bars exist. -->
+    <!-- Visualization: waveform scrubber or live spectrum analyzer. Mounts once bars exist. -->
     {#if hasWaveform}
       <div class="space-y-2" transition:slide={{ duration: 450 }}>
         <!-- View toggle -->
@@ -370,54 +370,51 @@
             type="button"
             class={cn(
               'rounded-md px-2.5 py-1 font-medium transition-colors',
-              view === 'spectrogram' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              view === 'spectrum' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
             )}
-            aria-pressed={view === 'spectrogram'}
-            onclick={() => setView('spectrogram')}
+            aria-pressed={view === 'spectrum'}
+            onclick={() => setView('spectrum')}
           >
-            Spectrogram
+            Spectrum
           </button>
         </div>
 
-        <!-- Shared scrub lane: waveform and spectrogram scroll in lockstep via the same offset. -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          bind:this={waveformContainerEl}
-          class={cn(
-            'relative cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none transition-[height] duration-300 select-none active:cursor-grabbing dark:bg-black/80',
-            view === 'spectrogram' ? 'h-28' : 'h-12',
-          )}
-          role="slider"
-          tabindex="0"
-          aria-label="Seek playback"
-          data-bars={precomputedWaveform.length}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={scrubberValue}
-          onpointerdown={scrub.handlePointerDown}
-          onkeydown={scrub.handleKeyDown}
-        >
-          <div class="relative h-full w-full overflow-hidden">
-            <div
-              class="absolute left-0 h-full"
-              style:transform="translateX({scrub.offset}px)"
-              style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
-              style:width="{displayWidth}px"
-            >
-              {#if view === 'waveform'}
+        {#if view === 'waveform'}
+          <!-- Scrolling / scratchable waveform (drag to scrub). -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            bind:this={waveformContainerEl}
+            class="relative h-12 cursor-grab touch-none overflow-hidden rounded-lg bg-foreground/10 p-2 outline-none select-none active:cursor-grabbing dark:bg-black/80"
+            role="slider"
+            tabindex="0"
+            aria-label="Seek playback"
+            data-bars={precomputedWaveform.length}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={scrubberValue}
+            onpointerdown={scrub.handlePointerDown}
+            onkeydown={scrub.handleKeyDown}
+          >
+            <div class="relative h-full w-full overflow-hidden">
+              <div
+                class="absolute left-0"
+                style:transform="translateX({scrub.offset}px)"
+                style:transition={scrub.isScrubbing || scrub.isMomentumActive ? 'none' : 'transform 0.016s linear'}
+                style:width="{displayWidth}px"
+              >
                 <Waveform data={precomputedWaveform} height={32} barWidth={3} barGap={2} barRadius={1} {barColor} fadeEdges={true} fadeWidth={24} />
-              {:else if spectrogramReady && spectrogram}
-                <Spectrogram payload={spectrogram} {barColor} {isDark} />
-              {/if}
+              </div>
             </div>
           </div>
-
-          {#if view === 'spectrogram' && !spectrogramReady}
-            <div class="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-              {spectrogramUnavailable ? 'Spectrogram unavailable for this file' : 'Analyzing audio…'}
-            </div>
-          {/if}
-        </div>
+        {:else if spectrogramReady && spectrogram}
+          <div class="h-32 overflow-hidden rounded-lg bg-foreground/10 dark:bg-black/80">
+            <SpectrumAnalyzer payload={spectrogram} {isDark} class="h-full w-full" />
+          </div>
+        {:else}
+          <div class="flex h-32 items-center justify-center rounded-lg bg-foreground/5 text-xs text-muted-foreground">
+            {spectrogramUnavailable ? 'Spectrum unavailable for this file' : 'Analyzing audio…'}
+          </div>
+        {/if}
       </div>
     {/if}
 
