@@ -20,8 +20,10 @@ object SpectrogramExtractor {
 
     private val log = Logger.getInstance(SpectrogramExtractor::class.java)
 
-    private const val FFT_SIZE = 1024
-    private const val HOP = FFT_SIZE / 2
+    // Large window for fine low-frequency resolution (~12 Hz/bin at 48 kHz); the log bins below a few
+    // hundred Hz starve on a small FFT and read blocky. Hop is decoupled (75% overlap) to keep time detail.
+    private const val FFT_SIZE = 4096
+    private const val HOP = 1024
     private const val FREQ_BINS = 256
     private const val MIN_HZ = 20
     private const val MAX_HZ_CEILING = 20_000
