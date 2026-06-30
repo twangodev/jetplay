@@ -108,24 +108,24 @@ class MediaAccessorImpl : MediaAccessor {
             send(TranscodeEvent.Done)
         }
 
+    // Shared shell for the extract* RPCs: ffmpeg gate, then file resolve, then a guarded extract.
+    private suspend fun <T> withFfmpegResolvedFile(
+        fileId: VirtualFileId,
+        projectId: ProjectId,
+        default: T,
+        extract: (File) -> T,
+    ): T = withContext(Dispatchers.IO) {
+        if (!FfmpegAvailability.available) return@withContext default
+        val file = resolveFile(fileId, projectId) ?: return@withContext default
+        runCatching { extract(file) }.getOrDefault(default)
+    }
+
     override suspend fun extractWaveform(fileId: VirtualFileId, projectId: ProjectId): List<Double> =
-        withContext(Dispatchers.IO) {
-            if (!FfmpegAvailability.available) return@withContext emptyList()
-            val file = resolveFile(fileId, projectId) ?: return@withContext emptyList()
-            runCatching { WaveformExtractor.extract(file) }.getOrDefault(emptyList())
-        }
+        withFfmpegResolvedFile(fileId, projectId, emptyList()) { WaveformExtractor.extract(it) }
 
     override suspend fun extractMediaInfo(fileId: VirtualFileId, projectId: ProjectId): MediaInfo? =
-        withContext(Dispatchers.IO) {
-            if (!FfmpegAvailability.available) return@withContext null
-            val file = resolveFile(fileId, projectId) ?: return@withContext null
-            runCatching { MediaInfoExtractor.extract(file) }.getOrNull()
-        }
+        withFfmpegResolvedFile(fileId, projectId, null) { MediaInfoExtractor.extract(it) }
 
     override suspend fun extractSpectrogram(fileId: VirtualFileId, projectId: ProjectId): Spectrogram? =
-        withContext(Dispatchers.IO) {
-            if (!FfmpegAvailability.available) return@withContext null
-            val file = resolveFile(fileId, projectId) ?: return@withContext null
-            runCatching { SpectrogramExtractor.extract(file) }.getOrNull()
-        }
+        withFfmpegResolvedFile(fileId, projectId, null) { SpectrogramExtractor.extract(it) }
 }
