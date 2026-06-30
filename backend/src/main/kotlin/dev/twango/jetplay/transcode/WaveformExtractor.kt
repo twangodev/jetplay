@@ -42,8 +42,8 @@ object WaveformExtractor {
             log.warn("Waveform extraction failed for ${file.name}", e)
             emptyList()
         } finally {
-            safely("grabber.stop") { grabber.stop() }
-            safely("grabber.release") { grabber.release() }
+            log.safely("grabber.stop") { grabber.stop() }
+            log.safely("grabber.release") { grabber.release() }
         }
     }
 
@@ -74,12 +74,4 @@ object WaveformExtractor {
     }
 
     private fun normalize(average: Double): Double = (min(1.0, average * GAIN) * QUANTIZE).roundToInt() / QUANTIZE
-
-    private inline fun safely(action: String, block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            log.warn("$action failed", e)
-        }
-    }
 }
