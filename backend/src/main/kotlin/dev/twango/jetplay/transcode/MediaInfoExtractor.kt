@@ -108,8 +108,8 @@ object MediaInfoExtractor {
             log.warn("Media info extraction failed for ${file.name}", e)
             null
         } finally {
-            safely("grabber.stop") { grabber.stop() }
-            safely("grabber.release") { grabber.release() }
+            log.safely("grabber.stop") { grabber.stop() }
+            log.safely("grabber.release") { grabber.release() }
         }
     }
 
@@ -194,14 +194,6 @@ object MediaInfoExtractor {
             at(0, SIG_GIF) -> "image/gif"
             at(0, SIG_RIFF) && at(WEBP_BRAND_OFFSET, SIG_WEBP) -> "image/webp"
             else -> null
-        }
-    }
-
-    private inline fun safely(action: String, block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            log.warn("$action failed", e)
         }
     }
 }
