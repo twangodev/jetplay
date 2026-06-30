@@ -10,8 +10,8 @@ import dev.twango.jetplay.media.MediaInfo
 import dev.twango.jetplay.media.Spectrogram
 import dev.twango.jetplay.transcode.FfmpegAvailability
 import dev.twango.jetplay.transcode.MediaInfoExtractor
+import dev.twango.jetplay.transcode.MediaTranscoder
 import dev.twango.jetplay.transcode.SpectrogramExtractor
-import dev.twango.jetplay.transcode.TranscodeRunner
 import dev.twango.jetplay.transcode.WaveformExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -84,7 +84,7 @@ class MediaAccessorImpl : MediaAccessor {
             val output = try {
                 withContext(Dispatchers.IO) {
                     // onProgress fires synchronously inside ffmpeg, so trySend (non-suspending) bridges it.
-                    TranscodeRunner.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
+                    MediaTranscoder.transcode(input) { pct -> trySend(TranscodeEvent.Progress(pct)) }
                 }
             } catch (e: Exception) {
                 send(TranscodeEvent.Failed(e.message ?: "unknown"))
