@@ -1,3 +1,4 @@
+import { type Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 
 const videoConfig = {
@@ -7,6 +8,12 @@ const videoConfig = {
   mediaUrl: '/assets/sintel.webm',
   isVideo: true,
 }
+
+const waitForVideoReady = (page: Page) =>
+  page.waitForFunction(() => {
+    const el = document.querySelector('video')
+    return el != null && el.duration > 0
+  })
 
 test('click on video toggles playback', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
@@ -51,10 +58,7 @@ test('modern transport controls are present', async ({ loadApp }) => {
 test('forward 10s button advances time', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
   const before = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
   await page.locator('button[aria-label="Forward 10 seconds"]').click()
   const after = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
@@ -120,11 +124,7 @@ test('arrow keys skip forward and backward', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
 
-  // Wait for media to load
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
 
   await page.locator('[tabindex="-1"]').focus()
 
@@ -173,10 +173,7 @@ test('mouse movement shows controls when hidden', async ({ loadApp }) => {
 test('playing does not self-seek (no stutter feedback loop)', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
   await page.evaluate(() => {
     const el = document.querySelector('video')!
     ;(window as unknown as { __seeks: number }).__seeks = 0
@@ -198,10 +195,7 @@ test('playing does not self-seek (no stutter feedback loop)', async ({ loadApp }
 test('keyboard arrows on the focused seek thumb actually seek', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
   await page.locator('[data-seek-slider] [role="slider"]').focus()
   const before = await video.evaluate((el: HTMLVideoElement) => el.currentTime)
   for (let i = 0; i < 12; i++) await page.keyboard.press('ArrowRight')
@@ -216,10 +210,7 @@ test('keyboard arrows on the focused seek thumb actually seek', async ({ loadApp
 test('releasing a scrub off the track resumes playback', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
   await page.locator('button[aria-label="Play"]').click()
   await expect(video).toHaveJSProperty('paused', false)
 
@@ -237,11 +228,7 @@ test('releasing a scrub off the track resumes playback', async ({ loadApp }) => 
 test('time display shows formatted time', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
 
-  // Wait for duration to load
-  await page.waitForFunction(() => {
-    const el = document.querySelector('video')
-    return el && el.duration > 0
-  })
+  await waitForVideoReady(page)
 
   // Time display should match m:ss pattern
   const timeText = page.locator('.tabular-nums.opacity-80')
