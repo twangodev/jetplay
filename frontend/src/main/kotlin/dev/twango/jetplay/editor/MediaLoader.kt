@@ -70,7 +70,7 @@ class MediaLoader(
     private fun armLoadWatchdog(url: String) {
         watchdog?.cancel()
         watchdog = scope.launch {
-            delay(LOAD_TIMEOUT_SECONDS * MILLIS_PER_SECOND)
+            delay(LOAD_TIMEOUT_SECONDS.seconds)
             if (bridge.disposed || MediaServer.wasFetched(url)) return@launch
             // A backgrounded tab never loads its JCEF page, so it never fetches; only flag a stall the user can see.
             if (!bridge.isShowing()) return@launch
@@ -297,7 +297,6 @@ class MediaLoader(
     companion object {
         private val log = Logger.getInstance(MediaLoader::class.java)
         private const val LOAD_TIMEOUT_SECONDS = 20L
-        private const val MILLIS_PER_SECOND = 1000L
         private val RPC_READ_TIMEOUT = 30.seconds
     }
 }

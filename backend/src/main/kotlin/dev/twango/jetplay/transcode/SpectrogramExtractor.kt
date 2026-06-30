@@ -66,8 +66,8 @@ object SpectrogramExtractor {
             log.warn("Spectrogram extraction failed for ${file.name}", e)
             null
         } finally {
-            safely("grabber.stop") { grabber.stop() }
-            safely("grabber.release") { grabber.release() }
+            log.safely("grabber.stop") { grabber.stop() }
+            log.safely("grabber.release") { grabber.release() }
         }
     }
 
@@ -237,13 +237,5 @@ object SpectrogramExtractor {
         }
 
         fun columns(): List<FloatArray> = cols
-    }
-
-    private inline fun safely(action: String, block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            log.warn("$action failed", e)
-        }
     }
 }
