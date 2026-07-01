@@ -134,8 +134,7 @@ class MediaLoader(
     }
 
     private fun maybeSendMediaInfo() {
-        if (source.isRemote) return
-        if (source.extension.lowercase() in MediaClassification.rawAudioExtensions) return
+        if (!source.canProbeMediaInfo) return
         scope.launch {
             val info = MediaAccessor.getInstance().extractMediaInfo(fileId, projectId)
             if (info != null && !bridge.disposed) bridge.sendMediaInfo(info)

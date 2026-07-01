@@ -12,6 +12,9 @@ class EditorMediaSource(val file: VirtualFile) {
     val needsTranscoding: Boolean = MediaClassification.needsTranscoding(extension)
     val isRemote: Boolean = file.fileSystem !is LocalFileSystem
 
+    // Header probing runs host-side, so remote files stay eligible; raw headerless codecs can't be probed.
+    val canProbeMediaInfo: Boolean = extension !in MediaClassification.rawAudioExtensions
+
     /** Non-null only when the bytes are readable in this process. */
     fun localFileOrNull(): File? =
         if (!isRemote) runCatching { file.toNioPath().toFile() }.getOrNull()?.takeIf { it.isFile } else null
