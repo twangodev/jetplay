@@ -2,6 +2,30 @@
 
 # jetplay Changelog
 
+## [0.7.0](https://github.com/twangodev/jetplay/compare/v0.6.2...v0.7.0) (2026-07-01)
+
+
+### Added
+
+* spectrum analyzer for the audio player ([#92](https://github.com/twangodev/jetplay/issues/92)) ([7150639](https://github.com/twangodev/jetplay/commit/7150639c7106f58dd8fbf1357804001738e5d4fd))
+
+
+### Fixed
+
+* **frontend:** show media details for Remote Dev / Gateway files ([#100](https://github.com/twangodev/jetplay/issues/100)) ([10ef25d](https://github.com/twangodev/jetplay/commit/10ef25d6d067a879ef3f3b64469a30dc4a206fe3))
+
+
+### Changed
+
+* **backend:** drop TranscodeRunner pass-through, call MediaTranscoder directly ([#97](https://github.com/twangodev/jetplay/issues/97)) ([6cd59ba](https://github.com/twangodev/jetplay/commit/6cd59ba3d545c9deb8fb99372f5ee70aaf638611))
+* **backend:** extract a shared ffmpeg-gate helper for the extract* RPCs ([#96](https://github.com/twangodev/jetplay/issues/96)) ([7f77b42](https://github.com/twangodev/jetplay/commit/7f77b4276c6c4db39a6ac089fcd642c24f94cd0c))
+* **backend:** hoist the transcode safely helper into a Logger extension ([#98](https://github.com/twangodev/jetplay/issues/98)) ([24f32d2](https://github.com/twangodev/jetplay/commit/24f32d2237acce5bbea473214c66cbd2cf2ffdc1))
+* clear Qodana code-quality notices ([#87](https://github.com/twangodev/jetplay/issues/87)) ([5aa82f4](https://github.com/twangodev/jetplay/commit/5aa82f4a2e7b0b89fc225071714f35841595390f))
+* **frontend:** move JS payload encoders out of PlayerBridge into PlayerPayloads ([#99](https://github.com/twangodev/jetplay/issues/99)) ([f8c3af1](https://github.com/twangodev/jetplay/commit/f8c3af1db706c8e3ed7c02e57732a3bb71edaf54))
+* **frontend:** use the Duration idiom for the load watchdog delay ([#94](https://github.com/twangodev/jetplay/issues/94)) ([cf20a35](https://github.com/twangodev/jetplay/commit/cf20a35eb470e2f18a48c87e82c7edb209f20fbc))
+* remove the unused single-impl MediaSource interface ([#95](https://github.com/twangodev/jetplay/issues/95)) ([9c9ad8e](https://github.com/twangodev/jetplay/commit/9c9ad8ecd1008f79adfc1778bba4b08ebb780b5a))
+* **ui:** extract waitForVideoReady helper in video spec ([#93](https://github.com/twangodev/jetplay/issues/93)) ([2b1f4dd](https://github.com/twangodev/jetplay/commit/2b1f4ddc63d42e45bac40e13b1cb39039312ce44))
+
 ## [0.6.2](https://github.com/twangodev/jetplay/compare/v0.6.1...v0.6.2) (2026-06-25)
 
 
