@@ -1,6 +1,7 @@
 package dev.twango.jetplay.media
 
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 
@@ -37,5 +38,17 @@ class EditorMediaSourceTest : BasePlatformTestCase() {
         assertFalse(source.isVideo)
         assertFalse(source.needsTranscoding)
         assertEquals("mp3", source.extension)
+    }
+
+    // A LightVirtualFile isn't backed by LocalFileSystem, standing in for a Remote Dev / Gateway file.
+    fun testRemoteFileStaysEligibleForMediaInfo() {
+        val remote = EditorMediaSource(LightVirtualFile("song.mp3"))
+        assertTrue("a non-LocalFileSystem file must read as remote", remote.isRemote)
+        assertTrue("media-info probing runs host-side, so a remote file must stay eligible", remote.canProbeMediaInfo)
+    }
+
+    fun testRawAudioIsNotEligibleForMediaInfo() {
+        val raw = EditorMediaSource(LightVirtualFile("call.pcmu"))
+        assertFalse("headerless raw codecs can't be probed", raw.canProbeMediaInfo)
     }
 }
