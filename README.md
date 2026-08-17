@@ -14,9 +14,9 @@ Supported formats include MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, and many mor
 
 |  | Native | Transcoded |
 |--|--------|------------|
-| **Video** | WebM, OGV | MP4, M4V, MKV, AVI, MOV, WMV, FLV, TS, MTS, M2TS, 3GP, IVF |
+| **Video** | WebM, OGV | MP4, M4V, MKV, AVI, MOV, WMV, FLV, M2TS, M2T, 3GP, IVF |
 | **Audio** | MP3, WAV, FLAC, OGG, OGA, Opus | M4A, AAC, ADTS, AC3, EAC3, CAF, WMA, AIFF, AIF |
-| **Telephony / Voice** | — | AMR, AU, PCMU, ULAW, PCMA, ALAW, G722, GSM, SLN |
+| **Telephony / Voice** | — | AMR, AU, PCMU, ULAW, PCMA, ALAW, G722, SLIN |
 
 - **Native** — plays instantly in the embedded browser
 - **Transcoded** — converted to WebM (VP9/Opus) via bundled FFmpeg on first open, with live progress
