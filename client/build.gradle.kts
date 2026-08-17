@@ -1,7 +1,31 @@
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
-import java.util.concurrent.Callable
+import org.jetbrains.intellij.platform.gradle.extensions.IntelliJPlatformExtension
 
-val idesDir = rootProject.layout.projectDirectory.dir(".intellijPlatform/ides").asFile
+val rdClientLibraries = providers.provider {
+    val ideHome = extensions.getByType<IntelliJPlatformExtension>().platformPath
+    val clientCandidates = listOf(
+        "lib/intellij.rd.client.jar", // 2026.2+
+        "plugins/cwm-plugin/lib/frontend-split/rd-client.jar", // 2025.3-2026.1
+    )
+    val clientLibrary = clientCandidates.firstOrNull { ideHome.resolve(it).toFile().isFile }
+        ?: error(
+            "Missing IntelliJ RD client library under $ideHome; checked:\n" +
+                clientCandidates.joinToString("\n") { "  $it" },
+        )
+    val libraryPaths = listOf(
+        clientLibrary,
+        "lib/intellij.rd.platform.jar",
+        "lib/intellij.rd.ui.jar",
+        "lib/intellij.rd.ide.model.generated.jar",
+        "lib/intellij.libraries.rd.core.jar",
+    )
+    val missingLibraries = libraryPaths.filterNot { ideHome.resolve(it).toFile().isFile }
+    require(missingLibraries.isEmpty()) {
+        "Missing IntelliJ RD libraries under $ideHome:\n" +
+            missingLibraries.joinToString("\n") { "  $it" }
+    }
+    libraryPaths.map { ideHome.resolve(it).toFile() }
+}
 
 dependencies {
     intellijPlatform {
@@ -13,30 +37,9 @@ dependencies {
     implementation(project(":shared"))
     implementation(project(":frontend"))
 
-    // These RD jars aren't exposed as bundledModule() in IU-261, so pin them as compileOnly — resolved
-    // lazily via Callable because the IDE dir is empty until the platform plugin downloads it (fresh CI).
-    compileOnly(files(Callable {
-        val ideHome = idesDir.listFiles()?.sortedByDescending { it.name }?.firstOrNull()
-            ?: error("No resolved IDE under $idesDir")
-        // Glob the whole frontend-split dir instead of naming rd-client.jar/frontend-split.jar:
-        // EAP builds rename these, and the split classes we compile against live somewhere in here.
-        val splitDir = ideHome.resolve("plugins/cwm-plugin/lib/frontend-split")
-        val splitJars = splitDir.listFiles { f -> f.extension == "jar" }?.toList().orEmpty()
-        val libJars = listOf(
-            "lib/intellij.rd.platform.jar",
-            "lib/intellij.rd.ui.jar",
-            "lib/intellij.rd.ide.model.generated.jar",
-            "lib/intellij.libraries.rd.core.jar",
-        ).map { ideHome.resolve(it) }
-        // Fail early with a clear message if the IDE layout moved these internal jars.
-        val missingLib = libJars.filterNot { it.exists() }
-        require(splitJars.isNotEmpty() && missingLib.isEmpty()) {
-            "Missing IntelliJ internal jars for :client under $ideHome:\n" +
-                (if (splitJars.isEmpty()) "  $splitDir/*.jar\n" else "") +
-                missingLib.joinToString("\n") { "  $it" }
-        }
-        splitJars + libJars
-    }))
+    // The file-editor handler remains binary-compatible, but its jar moved out of the CWM plugin
+    // in 2026.2. Resolve it from the actual platform instead of scanning a pre-populated IDE cache.
+    compileOnly(files(rdClientLibraries))
 
     testImplementation(libs.junit)
     testImplementation(libs.opentest4j)
