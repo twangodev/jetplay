@@ -19,7 +19,7 @@ group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
 }
 
 subprojects {
@@ -29,12 +29,13 @@ subprojects {
     apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
 
     kotlin {
-        jvmToolchain(21)
+        jvmToolchain(25)
     }
 
     dependencies {
         intellijPlatform {
             intellijIdea(providers.gradleProperty("platformVersion"))
+            bundledPlugins(providers.gradleProperty("platformBundledPlugins").map { it.split(',') })
         }
     }
 }
