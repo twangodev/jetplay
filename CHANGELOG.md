@@ -2,6 +2,19 @@
 
 # jetplay Changelog
 
+## [0.7.1](https://github.com/twangodev/jetplay/compare/v0.7.0...v0.7.1) (2026-08-19)
+
+
+### Fixed
+
+* **client:** resolve relocated RD client library ([8d22487](https://github.com/twangodev/jetplay/commit/8d22487dde3f3ce97fd82dd145f670288b3011cd))
+* **frontend:** declare relocated JCEF module dependency ([a4c6672](https://github.com/twangodev/jetplay/commit/a4c66728c1cbc7b0e86ae7f3756bf3b65647ee6e))
+
+
+### Changed
+
+* **client:** simplify RD compile dependencies ([4b54d22](https://github.com/twangodev/jetplay/commit/4b54d22971cb168e7dc38f0cf569ff972ec1aea2))
+
 ## [0.7.0](https://github.com/twangodev/jetplay/compare/v0.6.2...v0.7.0) (2026-07-01)
 
 
