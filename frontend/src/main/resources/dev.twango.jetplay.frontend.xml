@@ -1,6 +1,7 @@
 <idea-plugin>
     <dependencies>
         <module name="dev.twango.jetplay.shared"/>
+        <module name="intellij.platform.ui.jcef"/>
     </dependencies>
 
     <extensions defaultExtensionNs="com.intellij">
