@@ -57,7 +57,7 @@ jobs:
 
       # Set up the Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 17
@@ -159,7 +159,7 @@ jobs:
 
       # Set up the Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 17
@@ -223,7 +223,7 @@ jobs:
 
       # Set up the Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 17
@@ -246,7 +246,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 17
@@ -298,7 +298,7 @@ jobs:
 
       # Set up the Java environment for the next steps
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: zulu
           java-version: 17
