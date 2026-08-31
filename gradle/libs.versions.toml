@@ -7,7 +7,7 @@ pluginVerifier = "1.409"
 
 # plugins
 changelog = "2.5.0"
-detekt = "2.0.0-alpha.5"
+detekt = "2.0.0-alpha.6"
 intelliJPlatform = "2.18.1"
 kotlin = "2.3.20"
 kover = "0.9.9"
