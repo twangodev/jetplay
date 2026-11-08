@@ -12,14 +12,19 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
             config: PlayerConfig,
             openLinkJs: String,
             spectrogramRequestJs: String = "",
+            copyTextJs: String = "",
         ): String = buildString {
             append("<script>")
             append("window.jetplayOpenLink = function(url) { $openLinkJs };")
             append("window.jetplayRequestSpectrogram = function() { $spectrogramRequestJs };")
+            if (copyTextJs.isNotEmpty()) {
+                append("window.jetplayCopyText = function(text) { return new Promise(function(resolve, reject) { $copyTextJs }); };")
+            }
             append("window.jetplay = {")
             append("state: '${config.state}',")
             append("isVideo: ${config.isVideo},")
             append("fileName: '${PlayerPayloads.escapeJs(config.fileName)}',")
+            append("filePath: '${PlayerPayloads.escapeJs(config.filePath)}',")
             append("fileExtension: '${PlayerPayloads.escapeJs(config.fileExtension)}',")
             config.mediaUrl?.let { append("mediaUrl: '${PlayerPayloads.escapeJs(it)}',") }
             if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerPayloads.escapeJs(config.errorMessage)}',")
@@ -43,7 +48,12 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
     fun load(config: PlayerConfig) {
         val openLinkJs = bridge.openLinkQuery.inject("url")
         val spectrogramRequestJs = bridge.spectrogramRequestQuery.inject("''")
-        val configScript = buildConfigScript(config, openLinkJs, spectrogramRequestJs)
+        val copyTextJs = bridge.copyTextQuery.inject(
+            "text",
+            "function() { resolve(); }",
+            "function(code, message) { reject(new Error(message)); }",
+        )
+        val configScript = buildConfigScript(config, openLinkJs, spectrogramRequestJs, copyTextJs)
         bridge.loadHtml(playerHtml.replace("</head>", "$configScript</head>"))
     }
 }

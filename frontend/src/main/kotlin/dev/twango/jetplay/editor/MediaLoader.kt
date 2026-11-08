@@ -21,6 +21,7 @@ import dev.twango.jetplay.media.MediaClassification
 import dev.twango.jetplay.media.MediaServer
 import dev.twango.jetplay.media.RemoteRangeByteSource
 import dev.twango.jetplay.media.contentTypeForExtension
+import dev.twango.jetplay.media.mediaReferencePath
 import dev.twango.jetplay.rpc.MediaAccessor
 import dev.twango.jetplay.rpc.TranscodeEvent
 import kotlinx.coroutines.CancellationException
@@ -87,6 +88,7 @@ class MediaLoader(
 
     private val fileId by lazy { source.file.rpcId() }
     private val projectId by lazy { project.projectId() }
+    private val referencePath by lazy { mediaReferencePath(source.file.path, project.basePath) }
 
     // Guards the one-shot lazy spectrogram compute against duplicate reveal requests.
     private val spectrogramRequested = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -153,6 +155,7 @@ class MediaLoader(
                 state = "loading",
                 isVideo = source.isVideo,
                 fileName = source.fileName,
+                filePath = referencePath,
                 fileExtension = source.extension,
                 ui = uiStrings,
             ),
@@ -185,6 +188,7 @@ class MediaLoader(
             PlayerConfig(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
+                filePath = referencePath,
                 fileExtension = source.extension,
                 mediaUrl = url,
                 ui = uiStrings,
@@ -200,6 +204,7 @@ class MediaLoader(
                 state = "loading",
                 isVideo = source.isVideo,
                 fileName = source.fileName,
+                filePath = referencePath,
                 fileExtension = source.extension,
                 transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
                 ui = uiStrings,
@@ -263,6 +268,7 @@ class MediaLoader(
                 state = "error",
                 isVideo = source.isVideo,
                 fileName = source.fileName,
+                filePath = referencePath,
                 fileExtension = source.extension,
                 errorMessage = JetPlayBundle.message("error.transcoding.message"),
                 ui = uiStrings,

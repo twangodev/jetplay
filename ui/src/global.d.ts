@@ -45,6 +45,7 @@ declare global {
     jetplay?: {
       mediaUrl?: string
       fileName?: string
+      filePath?: string
       fileExtension?: string
       isVideo?: boolean
       state?: 'loading' | 'ready' | 'error'
@@ -72,6 +73,7 @@ declare global {
     jetplayMediaInfo?: (info: MediaInfo) => void
     __jetplayMediaInfo?: MediaInfo
     jetplayOpenLink?: (url: string) => void
+    jetplayCopyText?: (text: string) => Promise<void>
     // Lazy spectrogram: the page asks via jetplayRequestSpectrogram, the IDE answers via jetplaySpectrogram.
     jetplayRequestSpectrogram?: () => void
     jetplaySpectrogram?: (data: SpectrogramData) => void

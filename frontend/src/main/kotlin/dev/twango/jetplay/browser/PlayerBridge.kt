@@ -1,6 +1,7 @@
 package dev.twango.jetplay.browser
 
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
@@ -9,6 +10,7 @@ import dev.twango.jetplay.media.Spectrogram
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
+import java.awt.datatransfer.StringSelection
 import javax.swing.SwingUtilities
 
 class PlayerBridge(private val browser: JBCefBrowser) {
@@ -37,6 +39,23 @@ class PlayerBridge(private val browser: JBCefBrowser) {
             onSpectrogramRequest?.invoke()
             null
         }
+    }
+
+    // Use the IDE clipboard because loadHTML pages cannot rely on browser clipboard permissions.
+    val copyTextQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
+        addHandler { text -> copyText(text) }
+    }
+
+    private fun copyText(text: String): JBCefJSQuery.Response = try {
+        val copy = Runnable {
+            check(!disposed) { "Player has been closed" }
+            CopyPasteManager.getInstance().setContents(StringSelection(text))
+        }
+        // Return success only once the clipboard has actually been updated.
+        if (SwingUtilities.isEventDispatchThread()) copy.run() else SwingUtilities.invokeAndWait(copy)
+        JBCefJSQuery.Response("")
+    } catch (e: Exception) {
+        JBCefJSQuery.Response(null, 1, e.cause?.message ?: e.message ?: "Unable to copy timestamp")
     }
 
     init {
@@ -122,6 +141,7 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         disposed = true
         openLinkQuery.dispose()
         spectrogramRequestQuery.dispose()
+        copyTextQuery.dispose()
         browser.dispose()
     }
 }

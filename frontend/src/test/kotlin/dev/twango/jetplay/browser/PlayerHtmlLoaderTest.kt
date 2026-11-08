@@ -29,6 +29,27 @@ class PlayerHtmlLoaderTest {
     }
 
     @Test
+    fun preservesOriginalReferencePathSeparatelyFromPlaybackUrl() {
+        val result = buildScript(
+            PlayerConfig(filePath = "assets/it's <demo>.mp4", mediaUrl = "http://127.0.0.1:1234/temporary.webm"),
+        )
+        assertTrue(result.contains("filePath: 'assets/it\\'s \\x3cdemo\\x3e.mp4'"))
+        assertTrue(result.contains("mediaUrl: 'http://127.0.0.1:1234/temporary.webm'"))
+    }
+
+    @Test
+    fun clipboardFunctionWaitsForNativeCallback() {
+        val result = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "", copyTextJs = "nativeCopy(text, resolve, reject)")
+        assertTrue(result.contains("window.jetplayCopyText = function(text) { return new Promise(function(resolve, reject) {"))
+        assertTrue(result.contains("nativeCopy(text, resolve, reject)"))
+    }
+
+    @Test
+    fun omitsClipboardFunctionWithoutNativeHandler() {
+        assertFalse(buildScript(PlayerConfig()).contains("jetplayCopyText"))
+    }
+
+    @Test
     fun containsIsVideo() {
         val resultTrue = buildScript(PlayerConfig(isVideo = true))
         assertTrue(resultTrue.contains("isVideo: true"))
