@@ -2,6 +2,13 @@
 
 # jetplay Changelog
 
+## [0.7.2](https://github.com/twangodev/jetplay/compare/v0.7.1...v0.7.2) (2026-11-08)
+
+
+### Fixed
+
+* **ui:** resolve Svelte rune inference in type checks ([211c996](https://github.com/twangodev/jetplay/commit/211c99699d49046a048fde4b41c31528e48b1f0c))
+
 ## [0.7.1](https://github.com/twangodev/jetplay/compare/v0.7.0...v0.7.1) (2026-08-19)
 
 
