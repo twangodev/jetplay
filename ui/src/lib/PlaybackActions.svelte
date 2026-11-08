@@ -26,6 +26,7 @@
   let timestamp = $state('')
   let error = $state('')
   let feedback = $state('')
+  let destroyed = false
   let feedbackTimer: ReturnType<typeof setTimeout> | undefined
   let trigger: HTMLButtonElement
   let dialog: HTMLDialogElement
@@ -57,7 +58,10 @@
     onOpenChange?.(menuOpen || dialogOpen)
   })
 
-  onDestroy(() => clearTimeout(feedbackTimer))
+  onDestroy(() => {
+    destroyed = true
+    clearTimeout(feedbackTimer)
+  })
 
   function setRepeat(checked: boolean) {
     if (!media) return
@@ -67,11 +71,12 @@
 
   async function openJump() {
     if (!media || duration <= 0) return
-    timestamp = formatTimestamp(media.currentTime)
+    timestamp = formatTimestamp(Math.min(media.currentTime, Math.floor(duration * 1000) / 1000))
     error = ''
     dialogOpen = true
     // Wait for the menu to release focus before opening the modal.
     await tick()
+    if (destroyed) return
     dialog.showModal()
     input.focus()
     input.select()
@@ -90,7 +95,7 @@
       return
     }
     if (time > limit) {
-      error = `Enter a time between 00:00.000 and ${formatTimestamp(limit)}.`
+      error = `Enter a time between 00:00.000 and ${formatTimestamp(Math.floor(limit * 1000) / 1000)}.`
       return
     }
     if (!media) return
@@ -108,6 +113,7 @@
   }
 
   function showFeedback(message: string) {
+    if (destroyed) return
     clearTimeout(feedbackTimer)
     feedback = message
     feedbackTimer = setTimeout(() => (feedback = ''), 5000)

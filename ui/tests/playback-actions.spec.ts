@@ -115,5 +115,54 @@ for (const kind of ['audio', 'video'] as const) {
       await expect(page.getByRole('status')).toContainText(/could not|unable|failed/i)
       await expect(page.locator(kind)).toHaveJSProperty('paused', true)
     })
+
+    test('timestamp actions wait for metadata', async ({ page, loadApp }) => {
+      await page.route('**/assets/pending.*', () => {})
+      await loadApp({ ...config, mediaUrl: '/assets/pending.ogg' })
+      await page.getByRole('button', { name: 'Playback actions', exact: true }).click()
+      await expect(page.getByRole('menuitem', { name: /Jump to timestamp/ })).toHaveAttribute('aria-disabled', 'true')
+      await expect(page.getByRole('menuitem', { name: 'Copy timestamp', exact: true })).toHaveAttribute('aria-disabled', 'true')
+      await expect(page.getByRole('menuitemcheckbox', { name: 'Repeat file' })).not.toHaveAttribute('aria-disabled', 'true')
+    })
+
+    test('standalone preview uses browser clipboard and filename fallback', async ({ loadApp }) => {
+      const page = await loadApp({ ...config, filePath: undefined })
+      const media = page.locator(kind)
+      await expect.poll(() => media.evaluate((el: HTMLMediaElement) => el.readyState)).toBeGreaterThanOrEqual(2)
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', {
+          configurable: true,
+          value: { writeText: async (text: string) => { (window as any).copiedTimestamp = text } },
+        })
+      })
+      await page.getByRole('button', { name: 'Playback actions', exact: true }).click()
+      await page.getByRole('menuitem', { name: 'Copy timestamp', exact: true }).click()
+      await expect.poll(() => page.evaluate(() => (window as any).copiedTimestamp))
+        .toBe(`${config.fileName} @ 00:00.000`)
+      await expect(page.getByRole('status')).toContainText(/copied/i)
+    })
+
+    test('the prefilled endpoint and advertised maximum are valid millisecond timestamps', async ({ loadApp }) => {
+      const page = await loadApp(config)
+      const media = page.locator(kind)
+      await expect.poll(() => media.evaluate((el: HTMLMediaElement) => el.readyState)).toBeGreaterThanOrEqual(2)
+      await media.evaluate((el: HTMLMediaElement) => {
+        Object.defineProperty(el, 'duration', { configurable: true, value: 2.3456 })
+        el.currentTime = 2.3456
+        el.dispatchEvent(new Event('durationchange'))
+      })
+      await page.getByRole('button', { name: 'Playback actions', exact: true }).click()
+      await page.getByRole('menuitem', { name: /Jump to timestamp/ }).click()
+      const dialog = page.getByRole('dialog', { name: 'Jump to timestamp' })
+      const input = dialog.getByRole('textbox', { name: 'Timestamp', exact: true })
+      await expect(input).toHaveValue('00:02.345')
+      await input.fill('2.346')
+      await input.press('Enter')
+      await expect(dialog.getByRole('alert')).toContainText('00:02.345')
+      await input.fill('00:02.345')
+      await input.press('Enter')
+      await expect(dialog).not.toBeVisible()
+      await expect.poll(() => media.evaluate((el: HTMLMediaElement) => el.currentTime)).toBeCloseTo(2.345, 3)
+    })
   })
 }
