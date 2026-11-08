@@ -8,7 +8,7 @@
   const config = window.jetplay ?? {}
 
   // Seed from window stashes: a fast transcode can push state before these handlers mount.
-  let state = $state(
+  let playbackState = $state(
     window.__jetplayReadyUrl
       ? 'ready'
       : window.__jetplayError
@@ -36,23 +36,23 @@
 
   window.jetplayStartTranscoding = () => {
     progress = 0
-    state = 'loading'
+    playbackState = 'loading'
   }
 
   window.jetplayReady = (url: string) => {
     mediaUrl = url
-    state = 'ready'
+    playbackState = 'ready'
   }
 
   window.jetplayError = (message: string) => {
     errorMessage = message
-    state = 'error'
+    playbackState = 'error'
   }
 
   // Surfaces HTML5 media element failures through the same error screen.
   function onMediaError(error: MediaError | null) {
     errorMessage = mediaErrorDetail(error)
-    state = 'error'
+    playbackState = 'error'
   }
 
   // Amplitude bars decoded by FFmpeg in the IDE, cheaper than decoding the whole file in-browser.
@@ -71,9 +71,9 @@
   }
 </script>
 
-{#if state === 'loading'}
+{#if playbackState === 'loading'}
   <TranscodingState {fileName} {progress} reason={transcodingReason} transcodingLabel={ui.transcodingLabel} transcodingTip={ui.transcodingTip} />
-{:else if state === 'error'}
+{:else if playbackState === 'error'}
   <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />
 {:else if isVideo}
   <VideoPlayer src={mediaUrl} {fileName} extension={fileExtension} {mediaInfo} {onMediaError} />
