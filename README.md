@@ -21,6 +21,14 @@ Supported formats include MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, and many mor
 - **Native** — plays instantly in the embedded browser
 - **Transcoded** — converted to WebM (VP9/Opus) via bundled FFmpeg on first open, with live progress
 
+## Playback Tools
+
+Open the **…** menu beside the speed control in either player to:
+
+- **Repeat file** — loop the current audio or video.
+- **Jump to timestamp** — enter seconds, `m:ss`, or `h:mm:ss`, with up to three decimal places, such as `1:23.450`.
+- **Copy timestamp** — copy a reference such as `assets/demo.webm @ 00:12.450` for an issue or review. Files inside the project use a project-relative path.
+
 ## Installation
 
 - Using the IDE built-in plugin system:
