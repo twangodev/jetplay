@@ -5,6 +5,7 @@
   let {
     src,
     fileName,
+    filePath,
     extension,
     waveform = [],
     mediaInfo,
@@ -12,6 +13,7 @@
   }: {
     src: string
     fileName: string
+    filePath: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
@@ -26,5 +28,5 @@
   track. See AudioPlayerBody.svelte.
 -->
 <AudioPlayer.Root>
-  <AudioPlayerBody {src} {fileName} {extension} {waveform} {mediaInfo} {spectrogram} />
+  <AudioPlayerBody {src} {fileName} {filePath} {extension} {waveform} {mediaInfo} {spectrogram} />
 </AudioPlayer.Root>

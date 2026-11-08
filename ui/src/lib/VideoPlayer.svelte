@@ -21,23 +21,26 @@
   import { cn } from '$lib/utils.js'
   import { formatTime } from './formatTime'
   import { videoInfoRows, audioInfoRows, generalInfoRows } from './mediaInfoRows'
+  import PlaybackActions from './PlaybackActions.svelte'
 
   let {
     src,
     fileName,
+    filePath,
     extension = '',
     mediaInfo,
     onMediaError,
   }: {
     src: string
     fileName: string
+    filePath: string
     extension?: string
     mediaInfo?: MediaInfo
     onMediaError?: (error: MediaError | null) => void
   } = $props()
 
   let containerEl: HTMLDivElement
-  let videoEl: HTMLVideoElement
+  let videoEl: HTMLVideoElement = $state()!
   let paused = $state(true)
   let currentTime = $state(0)
   let duration = $state(0)
@@ -46,6 +49,7 @@
   let playbackRate = $state(1)
   let controlsVisible = $state(true)
   let infoExpanded = $state(false)
+  let actionsOpen = $state(false)
   let hideTimer: ReturnType<typeof setTimeout>
 
   const PLAYBACK_SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -155,7 +159,7 @@
     controlsVisible = true
     clearTimeout(hideTimer)
     hideTimer = setTimeout(() => {
-      if (!paused && !infoExpanded) controlsVisible = false
+      if (!paused && !infoExpanded && !actionsOpen) controlsVisible = false
     }, 3000)
   }
 
@@ -180,7 +184,12 @@
   onMount(() => {
     containerEl?.focus()
     containerEl.addEventListener('keydown', onSeekKeyCapture, { capture: true })
-    return () => containerEl.removeEventListener('keydown', onSeekKeyCapture, { capture: true })
+    return () => {
+      clearTimeout(hideTimer)
+      window.removeEventListener('pointerup', endSeekScrub)
+      window.removeEventListener('pointercancel', endSeekScrub)
+      containerEl.removeEventListener('keydown', onSeekKeyCapture, { capture: true })
+    }
   })
 </script>
 
@@ -320,6 +329,15 @@
         {@render volumeControl()}
         <span class="flex-1"></span>
         {@render speedMenu()}
+        <PlaybackActions
+          media={videoEl ?? null}
+          {filePath}
+          darkOverlay
+          onOpenChange={(open) => {
+            actionsOpen = open
+            showControls()
+          }}
+        />
       </div>
     </div>
   </div>

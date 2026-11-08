@@ -25,6 +25,7 @@
   let spectrogram = $state(window.__jetplaySpectrogram)
 
   const fileName = config.fileName ?? 'Unknown'
+  const filePath = config.filePath || fileName
   const fileExtension = config.fileExtension ?? ''
   const isVideo = config.isVideo ?? false
   const transcodingReason = config.transcodingReason ?? ''
@@ -76,7 +77,7 @@
 {:else if playbackState === 'error'}
   <ErrorState message={errorMessage} errorTitle={ui.errorTitle} />
 {:else if isVideo}
-  <VideoPlayer src={mediaUrl} {fileName} extension={fileExtension} {mediaInfo} {onMediaError} />
+  <VideoPlayer src={mediaUrl} {fileName} {filePath} extension={fileExtension} {mediaInfo} {onMediaError} />
 {:else}
-  <AudioPlayer src={mediaUrl} {fileName} extension={fileExtension} {waveform} {mediaInfo} {spectrogram} />
+  <AudioPlayer src={mediaUrl} {fileName} {filePath} extension={fileExtension} {waveform} {mediaInfo} {spectrogram} />
 {/if}

@@ -18,6 +18,7 @@
   import { SpectrumAnalyzer } from '$lib/components/ui/spectrum/index.js'
   import { cn } from '$lib/utils.js'
   import Branding from './Branding.svelte'
+  import PlaybackActions from './PlaybackActions.svelte'
   import { formatTime } from './formatTime'
   import { formatBitrate, formatBytes, formatSampleRate } from './mediaInfoFormat'
   import { useScratchableWaveform } from './use-scratchable-waveform.svelte.js'
@@ -25,6 +26,7 @@
   let {
     src,
     fileName,
+    filePath,
     extension,
     waveform = [],
     mediaInfo,
@@ -32,6 +34,7 @@
   }: {
     src: string
     fileName: string
+    filePath: string
     extension: string
     waveform?: number[]
     mediaInfo?: MediaInfo
@@ -434,6 +437,7 @@
           </Button>
         {/if}
         <AudioPlayerSpeed variant="ghost" size="icon" class="size-8 text-muted-foreground hover:text-foreground" />
+        <PlaybackActions media={player.audio} {filePath} />
       </div>
     </div>
 
