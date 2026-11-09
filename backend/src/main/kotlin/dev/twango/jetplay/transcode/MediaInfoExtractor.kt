@@ -3,10 +3,13 @@ package dev.twango.jetplay.transcode
 import com.intellij.openapi.diagnostic.Logger
 import dev.twango.jetplay.media.MediaInfo
 import dev.twango.jetplay.media.MediaTag
+import kotlinx.coroutines.CancellationException
+import org.bytedeco.ffmpeg.avcodec.AVCodecParameters
 import org.bytedeco.ffmpeg.avformat.AVStream
 import org.bytedeco.ffmpeg.global.avcodec
 import org.bytedeco.ffmpeg.global.avformat
 import org.bytedeco.ffmpeg.global.avutil
+import org.bytedeco.javacpp.BytePointer
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
@@ -16,9 +19,6 @@ import java.util.Base64
 object MediaInfoExtractor {
 
     private val log = Logger.getInstance(MediaInfoExtractor::class.java)
-
-    // Only lossless codecs report a meaningful bit depth; lossy decode to float internally.
-    private val LOSSLESS = setOf("flac", "alac", "wavpack", "truehd", "mlp", "tta", "als")
 
     // Cap cover art: larger only bloats the bridge payload.
     private const val MAX_ART_BYTES = 4_000_000
@@ -41,8 +41,7 @@ object MediaInfoExtractor {
 
     private const val BITS_PER_BYTE = 8
     private const val MILLIS_PER_SECOND = 1000
-    private const val CHANNELS_5_1 = 6
-    private const val CHANNELS_7_1 = 8
+    private const val CHANNEL_LABEL_CAPACITY = 256L
 
     private const val IMAGE_SNIFF_MIN_BYTES = 12
     private const val WEBP_BRAND_OFFSET = 8
@@ -53,20 +52,23 @@ object MediaInfoExtractor {
     private val SIG_WEBP = intArrayOf(0x57, 0x45, 0x42, 0x50)
 
     /** Returns the file's stream metadata, or null if it has no readable streams. */
-    fun extract(file: File): MediaInfo? {
+    fun extract(file: File, checkCancelled: () -> Unit = {}): MediaInfo? {
         // RAW reports the source sample/pixel formats, not the decoder's output.
         val grabber = FFmpegFrameGrabber(file).apply {
             sampleMode = FrameGrabber.SampleMode.RAW
             imageMode = FrameGrabber.ImageMode.RAW
         }
         return try {
+            checkCancelled()
             grabber.start()
+            checkCancelled()
             val channels = grabber.audioChannels
             val width = grabber.imageWidth
             val height = grabber.imageHeight
             val hasAudio = channels > 0
             val hasVideo = width > 0 && height > 0
             if (!hasAudio && !hasVideo) return null
+            val audioParameters = if (hasAudio) audioParameters(grabber) else null
 
             val durationMs = grabber.lengthInTime.takeIf { it > 0 }?.div(1000)
             val sizeBytes = file.length().takeIf { it > 0 }
@@ -90,8 +92,8 @@ object MediaInfoExtractor {
                 container = grabber.format?.substringBefore(",")?.takeIf { it.isNotBlank() },
                 sampleRateHz = if (hasAudio) grabber.sampleRate.takeIf { it > 0 } else null,
                 channels = if (hasAudio) channels else null,
-                channelLabel = if (hasAudio) channelLabel(channels) else null,
-                bitDepth = if (hasAudio) bitDepth(audioCodec, grabber.sampleFormat) else null,
+                channelLabel = audioParameters?.let(::channelLabel),
+                bitDepth = audioParameters?.let(::bitDepth),
                 bitrateBps = bitrate,
                 durationMs = durationMs,
                 sizeBytes = sizeBytes,
@@ -104,6 +106,8 @@ object MediaInfoExtractor {
                 tags = buildTags(grabber.metadata ?: emptyMap()),
                 albumArt = extractAlbumArt(grabber),
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.warn("Media info extraction failed for ${file.name}", e)
             null
@@ -122,36 +126,35 @@ object MediaInfoExtractor {
         return sizeBytes * BITS_PER_BYTE * MILLIS_PER_SECOND / durationMs
     }
 
-    private fun channelLabel(channels: Int): String? = when {
-        channels <= 0 -> null
-        channels == 1 -> "mono"
-        channels == 2 -> "stereo"
-        channels == CHANNELS_5_1 -> "5.1"
-        channels == CHANNELS_7_1 -> "7.1"
-        else -> "$channels ch"
+    private fun audioParameters(grabber: FFmpegFrameGrabber): AVCodecParameters? {
+        val context = grabber.formatContext ?: return null
+        val stream = (0 until context.nb_streams()).firstOrNull { index ->
+            context.streams(index).codecpar().codec_type() == avutil.AVMEDIA_TYPE_AUDIO &&
+                (grabber.audioStream < 0 || grabber.audioStream == index)
+        } ?: return null
+        return context.streams(stream).codecpar()
     }
 
-    private val PCM_PATTERN = Regex("""^pcm_([fsu])(\d+)""")
-
-    private fun bitDepth(codec: String?, sampleFormat: Int): String? = when {
-        codec == null -> null
-
-        // PCM names carry exact depth; the sample format would widen it.
-        codec.startsWith("pcm_") -> PCM_PATTERN.find(codec)?.let { match ->
-            val bits = match.groupValues[2]
-            if (match.groupValues[1] == "f") "$bits-bit float" else "$bits-bit"
+    private fun channelLabel(parameters: AVCodecParameters): String? {
+        if (parameters.ch_layout().nb_channels() <= 0) return null
+        return BytePointer(CHANNEL_LABEL_CAPACITY).use { label ->
+            val result = avutil.av_channel_layout_describe(parameters.ch_layout(), label, CHANNEL_LABEL_CAPACITY)
+            // The allocated pointer's limit is its capacity; FFmpeg wrote a NUL-terminated C string.
+            if (result >= 0) label.limit(0).string else null
         }
+    }
 
-        codec in LOSSLESS -> when (sampleFormat) {
-            avutil.AV_SAMPLE_FMT_U8, avutil.AV_SAMPLE_FMT_U8P -> "8-bit"
-            avutil.AV_SAMPLE_FMT_S16, avutil.AV_SAMPLE_FMT_S16P -> "16-bit"
-            avutil.AV_SAMPLE_FMT_S32, avutil.AV_SAMPLE_FMT_S32P -> "32-bit"
-            avutil.AV_SAMPLE_FMT_FLT, avutil.AV_SAMPLE_FMT_FLTP -> "32-bit float"
-            avutil.AV_SAMPLE_FMT_DBL, avutil.AV_SAMPLE_FMT_DBLP -> "64-bit float"
-            else -> null
-        }
-
-        else -> null
+    private fun bitDepth(parameters: AVCodecParameters): String? {
+        val codec = parameters.codec_id()
+        val properties = avcodec.avcodec_descriptor_get(codec)?.props() ?: 0
+        if (properties and avcodec.AV_CODEC_PROP_LOSSLESS == 0) return null
+        // Decoded storage (for example s32 for 24-bit FLAC) is not the source bit depth.
+        val bits = parameters.bits_per_raw_sample().takeIf { it > 0 }
+            ?: avcodec.av_get_exact_bits_per_sample(codec).takeIf { it > 0 }
+            ?: return null
+        val packed = avutil.av_get_packed_sample_fmt(parameters.format())
+        val floating = packed == avutil.AV_SAMPLE_FMT_FLT || packed == avutil.AV_SAMPLE_FMT_DBL
+        return if (floating) "$bits-bit float" else "$bits-bit"
     }
 
     internal fun buildTags(metadata: Map<String, String>): List<MediaTag> {

@@ -28,8 +28,9 @@ class MediaInfoExtractorTest {
             assertEquals("wav", info.container)
             assertEquals(8000, info.sampleRateHz)
             assertEquals(1, info.channels)
-            assertEquals("mono", info.channelLabel)
-            // Bit depth comes from the PCM codec name, not the (widened) sample format.
+            // This minimal WAV header specifies one channel, without a speaker-layout mask.
+            assertEquals("1 channels", info.channelLabel)
+            // Bit depth comes from source codec parameters, not the widened decoded storage.
             assertEquals("16-bit", info.bitDepth)
 
             val durationMs = info.durationMs
@@ -46,6 +47,22 @@ class MediaInfoExtractorTest {
         } finally {
             wav.delete()
         }
+    }
+
+    @Test
+    fun reportsSourceDepthInsteadOfDecodedStorageWidth() {
+        Assume.assumeTrue("FFmpeg native libraries required", FfmpegAvailability.available)
+        val fixture = File(checkNotNull(javaClass.getResource("/media/24bit.flac")).toURI())
+        assertEquals("24-bit", MediaInfoExtractor.extract(fixture)?.bitDepth)
+    }
+
+    @Test
+    fun reportsActualChannelLayoutInsteadOfGuessingFromChannelCount() {
+        Assume.assumeTrue("FFmpeg native libraries required", FfmpegAvailability.available)
+        val fixture = File(checkNotNull(javaClass.getResource("/media/six-channels.wav")).toURI())
+        val info = MediaInfoExtractor.extract(fixture)
+        assertEquals(6, info?.channels)
+        assertEquals("6.0", info?.channelLabel)
     }
 
     @Test
