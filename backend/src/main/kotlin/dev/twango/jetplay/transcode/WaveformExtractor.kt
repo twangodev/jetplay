@@ -1,6 +1,7 @@
 package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
+import kotlinx.coroutines.CancellationException
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
@@ -24,20 +25,28 @@ object WaveformExtractor {
     private const val INITIAL_BARS_CAPACITY = 4096
 
     /** One normalized amplitude per `1/[barsPerSecond]` of audio; empty if [file] has no audio or exceeds the cap. */
-    fun extract(file: File, barsPerSecond: Int = DEFAULT_BARS_PER_SECOND): List<Double> {
+    fun extract(
+        file: File,
+        barsPerSecond: Int = DEFAULT_BARS_PER_SECOND,
+        checkCancelled: () -> Unit = {},
+    ): List<Double> {
         val grabber = FFmpegFrameGrabber(file).apply {
             audioChannels = MONO_DOWNMIX
             sampleMode = FrameGrabber.SampleMode.SHORT
         }
         return try {
+            checkCancelled()
             grabber.start()
+            checkCancelled()
             // lengthInTime is unreliable, so sampleToBars enforces the real cap.
             val durationSeconds = grabber.lengthInTime / MICROS_PER_SECOND
             if (durationSeconds > MAX_DURATION_SECONDS) {
                 log.info("Skipping waveform for ${file.name}: ${durationSeconds.roundToInt()}s exceeds cap")
                 return emptyList()
             }
-            sampleToBars(grabber, barsPerSecond)
+            sampleToBars(grabber, barsPerSecond, checkCancelled)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.warn("Waveform extraction failed for ${file.name}", e)
             emptyList()
@@ -47,14 +56,19 @@ object WaveformExtractor {
         }
     }
 
-    private fun sampleToBars(grabber: FFmpegFrameGrabber, barsPerSecond: Int): List<Double> {
+    private fun sampleToBars(
+        grabber: FFmpegFrameGrabber,
+        barsPerSecond: Int,
+        checkCancelled: () -> Unit,
+    ): List<Double> {
         val samplesPerBar = (grabber.sampleRate / barsPerSecond).coerceAtLeast(1)
         // Bounds the decode even when container duration is unknown.
         val maxBars = MAX_DURATION_SECONDS * barsPerSecond
         val bars = ArrayList<Double>(minOf(maxBars, INITIAL_BARS_CAPACITY))
         var sum = 0.0
         var count = 0
-        while (bars.size < maxBars && !Thread.currentThread().isInterrupted) {
+        while (bars.size < maxBars) {
+            checkCancelled()
             val frame = grabber.grabSamples() ?: break
             val buffer = frame.samples?.firstOrNull() as? ShortBuffer
             if (buffer != null) {

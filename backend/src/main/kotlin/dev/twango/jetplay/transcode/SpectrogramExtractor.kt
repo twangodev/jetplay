@@ -2,6 +2,7 @@ package dev.twango.jetplay.transcode
 
 import com.intellij.openapi.diagnostic.Logger
 import dev.twango.jetplay.media.Spectrogram
+import kotlinx.coroutines.CancellationException
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
@@ -41,13 +42,15 @@ object SpectrogramExtractor {
     // Full-scale tone reads ~0 dBFS: FFT peak ≈ amp * FFT_SIZE * hannCoherentGain(0.5) / 2.
     private const val REF_MAGNITUDE = FFT_SIZE / 4.0
 
-    fun extract(file: File): Spectrogram? {
+    fun extract(file: File, checkCancelled: () -> Unit = {}): Spectrogram? {
         val grabber = FFmpegFrameGrabber(file).apply {
             audioChannels = MONO_DOWNMIX
             sampleMode = FrameGrabber.SampleMode.SHORT
         }
         return try {
+            checkCancelled()
             grabber.start()
+            checkCancelled()
             val sampleRate = grabber.sampleRate
             val maxHz = min(sampleRate / 2, MAX_HZ_CEILING)
             // lengthInTime is unreliable, so the frame loop also enforces the real cap.
@@ -60,8 +63,10 @@ object SpectrogramExtractor {
                     null
                 }
 
-                else -> sampleToSpectrogram(grabber, sampleRate, maxHz)
+                else -> sampleToSpectrogram(grabber, sampleRate, maxHz, checkCancelled)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.warn("Spectrogram extraction failed for ${file.name}", e)
             null
@@ -71,7 +76,12 @@ object SpectrogramExtractor {
         }
     }
 
-    private fun sampleToSpectrogram(grabber: FFmpegFrameGrabber, sampleRate: Int, maxHz: Int): Spectrogram? {
+    private fun sampleToSpectrogram(
+        grabber: FFmpegFrameGrabber,
+        sampleRate: Int,
+        maxHz: Int,
+        checkCancelled: () -> Unit,
+    ): Spectrogram? {
         val hann = DoubleArray(FFT_SIZE) { 0.5 * (1 - cos(2 * Math.PI * it / (FFT_SIZE - 1))) }
         val (loIdx, hiIdx) = logBinRanges(sampleRate, maxHz)
 
@@ -90,7 +100,8 @@ object SpectrogramExtractor {
         var hitDurationCap = false
 
         var done = false
-        while (!done && !Thread.currentThread().isInterrupted) {
+        while (!done) {
+            checkCancelled()
             val frame = grabber.grabSamples()
             if (frame == null) {
                 done = true
@@ -100,6 +111,7 @@ object SpectrogramExtractor {
                     window[filled++] = buffer.get() / SHORT_FULL_SCALE
                     totalSamples++
                     if (filled == FFT_SIZE) {
+                        checkCancelled()
                         computeColumn(window, hann, re, im, fftMag, loIdx, hiIdx, column)
                         pool.add(column)
                         frames++
