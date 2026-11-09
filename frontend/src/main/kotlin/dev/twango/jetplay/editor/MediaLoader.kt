@@ -18,6 +18,7 @@ import dev.twango.jetplay.browser.PlayerHtmlLoader
 import dev.twango.jetplay.browser.UiStrings
 import dev.twango.jetplay.media.EditorMediaSource
 import dev.twango.jetplay.media.MediaClassification
+import dev.twango.jetplay.media.MediaResources
 import dev.twango.jetplay.media.MediaServer
 import dev.twango.jetplay.media.RemoteRangeByteSource
 import dev.twango.jetplay.media.contentTypeForExtension
@@ -36,7 +37,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import java.io.File
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration.Companion.seconds
 
 class MediaLoader(
@@ -48,27 +48,10 @@ class MediaLoader(
 
     private val scope = project.service<MediaCoroutineService>().scope.childScope("MediaLoader")
 
-    // Loopback URLs to release on dispose.
-    private val servedUrls = CopyOnWriteArrayList<String>()
-
-    // Transcode outputs to delete on dispose rather than leaking until JVM exit.
-    private val servedTempFiles = CopyOnWriteArrayList<File>()
-
-    @Volatile
-    private var disposed = false
+    private val resources = MediaResources()
 
     @Volatile
     private var watchdog: Job? = null
-
-    // null if disposal already released the URL (lost the race with dispose).
-    private fun registerServed(url: String): String? {
-        servedUrls.add(url)
-        if (disposed) {
-            MediaServer.release(url)
-            return null
-        }
-        return url
-    }
 
     private fun armLoadWatchdog(url: String) {
         watchdog?.cancel()
@@ -132,7 +115,12 @@ class MediaLoader(
             return
         }
         scope.launch {
-            val spec = MediaAccessor.getInstance().extractSpectrogram(fileId, projectId)
+            val spec = mediaLoadOperation(
+                timeout = SPECTROGRAM_TIMEOUT,
+                onFailure = { log.warn("Spectrogram request failed for ${source.fileName}", it) },
+            ) {
+                MediaAccessor.getInstance().extractSpectrogram(fileId, projectId)
+            }
             if (!bridge.disposed) bridge.sendSpectrogram(spec)
         }
     }
@@ -158,7 +146,7 @@ class MediaLoader(
     private fun playFromSource() {
         val local = source.localFileOrNull()
         if (local != null) {
-            val url = registerServed(MediaServer.serve(local)) ?: return
+            val url = resources.register(local) ?: return
             loadPlayer(url)
             return
         }
@@ -174,7 +162,12 @@ class MediaLoader(
             ),
         )
         scope.launch {
-            val len = MediaAccessor.getInstance().fileLength(fileId, projectId)
+            val len = mediaLoadOperation(
+                timeout = RPC_READ_TIMEOUT,
+                onFailure = { showLoadError(it.message) },
+            ) {
+                MediaAccessor.getInstance().fileLength(fileId, projectId)
+            } ?: return@launch
             if (len <= 0L) {
                 showLoadError(JetPlayBundle.message("error.empty"))
                 return@launch
@@ -189,7 +182,7 @@ class MediaLoader(
                     }
                 }
             }
-            val url = registerServed(MediaServer.serve(remote)) ?: return@launch
+            val url = resources.register(remote) ?: return@launch
             // Push the URL in-page rather than a second loadHTML, which would race the shell's load.
             bridge.mediaReady(url)
             armLoadWatchdog(url)
@@ -237,10 +230,9 @@ class MediaLoader(
                 api.transcodeFile(fileId, projectId).collect { event -> writeTranscodeEvent(event, out) }
             }
             if (!bridge.disposed) {
-                val url = registerServed(MediaServer.serve(temp))
+                val url = resources.register(temp, temporary = true)
                 if (url != null) {
                     served = true
-                    servedTempFiles.add(temp)
                     bridge.mediaReady(url)
                     armLoadWatchdog(url)
                 }
@@ -306,10 +298,8 @@ class MediaLoader(
     }
 
     fun dispose() {
-        disposed = true
         scope.cancel()
-        servedUrls.forEach(MediaServer::release)
-        servedTempFiles.forEach(File::delete)
+        resources.dispose()
     }
 
     private object TranscodeUnavailable : Exception()
@@ -319,5 +309,6 @@ class MediaLoader(
         private val log = Logger.getInstance(MediaLoader::class.java)
         private const val LOAD_TIMEOUT_SECONDS = 20L
         private val RPC_READ_TIMEOUT = 30.seconds
+        private val SPECTROGRAM_TIMEOUT = 60.seconds
     }
 }
