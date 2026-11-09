@@ -3,7 +3,9 @@ package dev.twango.jetplay.browser
 import dev.twango.jetplay.playback.PlaybackMemorySnapshot
 import dev.twango.jetplay.playback.PlaybackPreferences
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,6 +24,17 @@ class PlayerHtmlLoaderTest {
         assertTrue(script.startsWith("<script>"))
         assertTrue(script.endsWith("</script>"))
         assertEquals(PlayerConfig(), roundTrip(PlayerConfig()))
+    }
+
+    @Test
+    fun defaultSnapshotEmitsCompleteContract() {
+        val config = Json.parseToJsonElement(configJson(PlayerHtmlLoader.buildConfigScript(PlayerConfig(), ""))).jsonObject
+        val snapshot = config.getValue("playbackMemory").jsonObject
+        val preferences = snapshot.getValue("preferences").jsonObject
+        assertEquals(1.0, preferences.getValue("volume").jsonPrimitive.double, 0.0)
+        assertEquals("false", preferences.getValue("muted").jsonPrimitive.content)
+        assertEquals(1.0, preferences.getValue("playbackRate").jsonPrimitive.double, 0.0)
+        assertEquals(0.0, snapshot.getValue("positionSeconds").jsonPrimitive.double, 0.0)
     }
 
     @Test

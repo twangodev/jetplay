@@ -1,24 +1,10 @@
 package dev.twango.jetplay.playback
 
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.double
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class PlaybackMemoryPayloadsTest {
-    @Test
-    fun defaultSnapshotEmitsCompleteContract() {
-        val snapshot = Json.parseToJsonElement(PlaybackMemoryPayloads.snapshotJson(PlaybackMemorySnapshot())).jsonObject
-        val preferences = snapshot.getValue("preferences").jsonObject
-        assertEquals(1.0, preferences.getValue("volume").jsonPrimitive.double, 0.0)
-        assertEquals("false", preferences.getValue("muted").jsonPrimitive.content)
-        assertEquals(1.0, preferences.getValue("playbackRate").jsonPrimitive.double, 0.0)
-        assertEquals(0.0, snapshot.getValue("positionSeconds").jsonPrimitive.double, 0.0)
-    }
-
     @Test
     fun positionOnlyPayloadLeavesPreferencesUnset() {
         assertEquals(PlaybackMemoryUpdate(positionSeconds = 12.45), PlaybackMemoryPayloads.parseUpdate("{\"positionSeconds\":12.45}"))

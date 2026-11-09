@@ -8,7 +8,6 @@ import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.FrameGrabber
 import java.io.File
 import java.io.Reader
-import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
 /** Converts through the bundled FFmpeg executable, which owns stream timestamps and resampling. */
@@ -39,18 +38,6 @@ object MediaTranscoder {
     )
 
     internal val rawAudioExtensions: Set<String> get() = RAW_AUDIO_HINTS.keys
-
-    /** Convenience for standalone callers; successful output ownership transfers to the caller. */
-    fun transcode(inputFile: File, onProgress: (Double) -> Unit = {}): File {
-        val output = Files.createTempFile("jetplay-", ".webm").toFile()
-        try {
-            transcode(inputFile, output, onProgress = onProgress)
-            return output
-        } catch (failure: Throwable) {
-            output.delete()
-            throw failure
-        }
-    }
 
     /** The caller owns [outputFile] before crossing any cancellable coroutine boundary. */
     fun transcode(
