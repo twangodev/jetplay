@@ -2,6 +2,35 @@
 
 # jetplay Changelog
 
+## [0.8.0](https://github.com/twangodev/jetplay/compare/v0.7.2...v0.8.0) (2026-11-09)
+
+
+### Added
+
+* **player:** add repeat and timestamp actions to audio and video ([0ed85a9](https://github.com/twangodev/jetplay/commit/0ed85a9729f5de7dd153a5c6239f4dd02cfb2b01))
+* **player:** persist local playback preferences and per-file positions ([3fc0fbf](https://github.com/twangodev/jetplay/commit/3fc0fbf668b59bc9c3b90d7b20c5472ca72f3ff7))
+* **player:** restore preferences and reopen media paused at saved position ([c10da38](https://github.com/twangodev/jetplay/commit/c10da3845007d9817759ff823b0966ebe12fed42))
+
+
+### Fixed
+
+* **frontend:** bind media server to its advertised IPv4 address ([b72626f](https://github.com/twangodev/jetplay/commit/b72626fe20868046b80bac73d2b3b44a1db6c0a2))
+* **frontend:** complete failed remote loads and own media resources atomically ([b041bfe](https://github.com/twangodev/jetplay/commit/b041bfe456446381232eb0345cc6f90a6e124965))
+* **media:** preserve timestamps and cancel FFmpeg work with owned outputs ([cd7a16d](https://github.com/twangodev/jetplay/commit/cd7a16d2fcc2d1d8f003e007e23d4e856aaf4fb7))
+* **media:** read source bit depth and channel layout from FFmpeg ([adeea39](https://github.com/twangodev/jetplay/commit/adeea3925f8a0f0db1dd0499be4c18819774f56e))
+* **player:** handle pending actions and precise duration boundaries ([4103617](https://github.com/twangodev/jetplay/commit/4103617f0fc84eecafbde1ea3843f8daeff3e2df))
+* **player:** merge preference changes without clobbering other tabs ([9c74f64](https://github.com/twangodev/jetplay/commit/9c74f644bd2b13c0e8b8d96a54f10b32c7391089))
+* **player:** respect mute and native playback cancellation and errors ([acc6885](https://github.com/twangodev/jetplay/commit/acc688529d0ea9082c0134b2437886974b9dd76b))
+
+
+### Changed
+
+* **frontend:** serialize typed player payloads with kotlinx ([fb10765](https://github.com/twangodev/jetplay/commit/fb10765b6ac91bb6f874cde48b23e070f56d8df7))
+* **frontend:** share player configuration across load states ([ba364e3](https://github.com/twangodev/jetplay/commit/ba364e34d5cdfb16c1a50b3466253a4c6816eb8c))
+* **media:** remove unused transcode and snapshot serialization APIs ([aae12de](https://github.com/twangodev/jetplay/commit/aae12de26da07e29644a807d3c39b235f0a69ba2))
+* **player:** centralize position writes and abort playback listeners ([592bcc3](https://github.com/twangodev/jetplay/commit/592bcc3908dfa6e174c0ebeb9913d04a69440b98))
+* **player:** delegate timestamp parsing to parse-duration ([737c722](https://github.com/twangodev/jetplay/commit/737c722c77fe1c31a911db8d009ea31cce8529c3))
+
 ## [0.7.2](https://github.com/twangodev/jetplay/compare/v0.7.1...v0.7.2) (2026-11-08)
 
 
