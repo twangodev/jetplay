@@ -18,4 +18,8 @@ data class PlayerConfig(
 )
 
 @Serializable
-data class UiStrings(val transcodingLabel: String? = null, val transcodingTip: String? = null, val errorTitle: String? = null)
+data class UiStrings(
+    val transcodingLabel: String? = null,
+    val transcodingTip: String? = null,
+    val errorTitle: String? = null,
+)
