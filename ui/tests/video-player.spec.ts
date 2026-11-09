@@ -15,6 +15,45 @@ const waitForVideoReady = (page: Page) =>
     return el != null && el.duration > 0
   })
 
+test('Pause cancels a pending video start without an unhandled rejection', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => { release = resolve })
+  await page.route('**/assets/sintel.webm', async (route) => {
+    await pending
+    await route.continue()
+  })
+  await page.addInitScript((config) => { window.jetplay = config }, videoConfig)
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    const video = page.locator('video')
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
+    await expect(video).toHaveJSProperty('paused', false)
+    await page.getByRole('button', { name: 'Pause', exact: true }).click()
+    await expect(video).toHaveJSProperty('paused', true)
+    release()
+    await waitForVideoReady(page)
+    await expect(video).toHaveJSProperty('paused', true)
+    await expect(page.getByText('Unable to play this file', { exact: true })).toHaveCount(0)
+    expect(errors).toEqual([])
+  } finally {
+    release()
+  }
+})
+
+test('a rejected video play request reaches the error screen', async ({ page, loadApp }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await loadApp(videoConfig)
+  await page.locator('video').evaluate((el: HTMLVideoElement) => {
+    el.play = () => Promise.reject(new DOMException('Playback denied', 'NotAllowedError'))
+  })
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
+  await expect(page.getByText('Unable to play this file', { exact: true })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('click on video toggles playback', async ({ loadApp }) => {
   const page = await loadApp(videoConfig)
   const video = page.locator('video')

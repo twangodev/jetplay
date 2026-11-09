@@ -18,10 +18,12 @@ test('audio element has no crossorigin attribute', async ({ loadApp }) => {
 })
 
 // The IDE decodes the waveform with FFmpeg and pushes the bars (the browser
-// can't read file:// bytes). Use a non-decodable URL so the browser fallback
-// can't mask the bridge path.
-test('waveform bars pushed from the IDE render the waveform', async ({ loadApp }) => {
-  const page = await loadApp({ ...audioConfig, mediaUrl: '/assets/does-not-exist.mp3' })
+// can't read file:// bytes). Hold metadata pending so the browser fallback
+// can't mask the bridge path, without triggering the media error screen.
+test('waveform bars pushed from the IDE render the waveform', async ({ page }) => {
+  await page.route('**/assets/pending.mp3', () => {})
+  await page.addInitScript((config) => { window.jetplay = config }, { ...audioConfig, mediaUrl: '/assets/pending.mp3' })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
   const waveform = page.locator('[aria-label="Seek playback"]')
   await expect(waveform).toHaveCount(0)
 
@@ -45,17 +47,18 @@ test('pushed bars take precedence over the in-browser fallback', async ({ loadAp
 // A push that arrived before the page defined the handler is stashed on window
 // and must still be picked up on mount.
 test('a waveform buffered before load is picked up', async ({ page }) => {
+  await page.route('**/assets/pending.mp3', () => {})
   await page.addInitScript(() => {
     ;(window as any).jetplay = {
       state: 'ready',
       fileName: 'x.mp3',
       fileExtension: 'mp3',
-      mediaUrl: '/assets/does-not-exist.mp3',
+      mediaUrl: '/assets/pending.mp3',
       isVideo: false,
     }
     ;(window as any).__jetplayWaveform = [0.4, 0.5, 0.6, 0.7]
   })
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('[aria-label="Seek playback"]')).toBeVisible()
 })
 
@@ -161,17 +164,18 @@ test('space activates the focused media-details toggle, not playback', async ({ 
 // A push that arrived before the page defined the handler is stashed on window
 // and must still be picked up on mount (same guard as the waveform).
 test('media info buffered before load is picked up', async ({ page }) => {
+  await page.route('**/assets/pending.mp3', () => {})
   await page.addInitScript(() => {
     ;(window as any).jetplay = {
       state: 'ready',
       fileName: 'x.wav',
       fileExtension: 'wav',
-      mediaUrl: '/assets/does-not-exist.mp3',
+      mediaUrl: '/assets/pending.mp3',
       isVideo: false,
     }
     ;(window as any).__jetplayMediaInfo = { container: 'wav', sampleRateHz: 44100, channels: 1, channelLabel: 'mono' }
   })
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
   const summary = page.locator('[data-slot="media-info-summary"]')
   await expect(summary).toBeVisible()
   await expect(summary).toContainText('44.1 kHz')

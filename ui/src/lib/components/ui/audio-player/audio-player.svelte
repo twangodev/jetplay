@@ -4,15 +4,17 @@
 	export type AudioPlayerProps = {
 		/** Sub-components that read the shared player state via context (e.g. `<AudioPlayer.Button />`). */
 		children?: Snippet;
+		onMediaError?: (error: MediaError | null) => void;
 	};
 </script>
 
 <script lang="ts">
 	import { setAudioPlayer } from "./context.svelte.js";
 
-	let { children }: AudioPlayerProps = $props();
+	let { children, onMediaError }: AudioPlayerProps = $props();
 
 	const player = setAudioPlayer();
+	player.onMediaError = (error) => onMediaError?.(error);
 
 	let audioEl: HTMLAudioElement | null = $state(null);
 
@@ -59,7 +61,7 @@
 	}}
 	onplay={() => (player.paused = false)}
 	onpause={() => (player.paused = true)}
-	onerror={() => (player.error = audioEl?.error ?? null)}
+	onerror={() => player.reportError(audioEl?.error ?? null)}
 	class="hidden"
 ></audio>
 {@render children?.()}

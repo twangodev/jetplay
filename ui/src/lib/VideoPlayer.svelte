@@ -79,8 +79,17 @@
     })
   })
 
+  async function playVideo() {
+    try {
+      await videoEl.play()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      onMediaError?.(videoEl.error)
+    }
+  }
+
   function togglePlay() {
-    if (videoEl.paused) void videoEl.play()
+    if (videoEl.paused) void playVideo()
     else videoEl.pause()
   }
   function toggleMute() {
@@ -133,7 +142,7 @@
     window.removeEventListener('pointercancel', endSeekScrub)
     if (resumeAfterScrub) {
       resumeAfterScrub = false
-      void videoEl.play()
+      void playVideo()
     }
   }
   // Capture-phase (registered in onMount) so we seek before bits-ui's thumb moves

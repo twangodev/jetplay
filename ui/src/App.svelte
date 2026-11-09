@@ -79,5 +79,5 @@
 {:else if isVideo}
   <VideoPlayer src={mediaUrl} {fileName} {filePath} extension={fileExtension} {mediaInfo} {onMediaError} />
 {:else}
-  <AudioPlayer src={mediaUrl} {fileName} {filePath} extension={fileExtension} {waveform} {mediaInfo} {spectrogram} />
+  <AudioPlayer src={mediaUrl} {fileName} {filePath} extension={fileExtension} {waveform} {mediaInfo} {spectrogram} {onMediaError} />
 {/if}

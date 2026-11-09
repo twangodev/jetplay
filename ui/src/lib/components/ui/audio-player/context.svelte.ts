@@ -22,7 +22,12 @@ export class AudioPlayerState<TData = unknown> {
 	isBuffering = $derived(this.readyState < 3 && this.networkState === 2);
 	isPlaying = $derived(!this.paused);
 
-	#playPromise: Promise<void> | null = null;
+	onMediaError?: (error: MediaError | null) => void;
+
+	reportError = (error: MediaError | null): void => {
+		this.error = error;
+		this.onMediaError?.(error);
+	};
 
 	isItemActive = (id: string | number | null): boolean => {
 		if (id === null) return this.activeItem === null;
@@ -55,45 +60,19 @@ export class AudioPlayerState<TData = unknown> {
 		const audio = this.audio;
 		if (!audio) return;
 
-		if (this.#playPromise) {
-			try {
-				await this.#playPromise;
-			} catch (error) {
-				console.error("Play promise error:", error);
-			}
+		if (item !== undefined && (item?.id ?? null) !== (this.activeItem?.id ?? null)) this.#swapTrack(item);
+		try {
+			await audio.play();
+		} catch (error) {
+			// Pausing or changing the source intentionally cancels an outstanding play request.
+			if (error instanceof DOMException && error.name === "AbortError") return;
+			this.reportError(audio.error);
 		}
-
-		if (item === undefined) {
-			const playPromise = audio.play();
-			this.#playPromise = playPromise;
-			return playPromise;
-		}
-		if ((item?.id ?? null) === (this.activeItem?.id ?? null)) {
-			const playPromise = audio.play();
-			this.#playPromise = playPromise;
-			return playPromise;
-		}
-
-		this.#swapTrack(item);
-		const playPromise = audio.play();
-		this.#playPromise = playPromise;
-		return playPromise;
 	};
 
-	pause = async (): Promise<void> => {
-		const audio = this.audio;
-		if (!audio) return;
-
-		if (this.#playPromise) {
-			try {
-				await this.#playPromise;
-			} catch (e) {
-				console.error(e);
-			}
-		}
-
-		audio.pause();
-		this.#playPromise = null;
+	pause = (): void => {
+		// Native pause also aborts a pending play(), so it must never wait for play to resolve.
+		this.audio?.pause();
 	};
 
 	seek = (time: number): void => {

@@ -10,6 +10,7 @@
     waveform = [],
     mediaInfo,
     spectrogram,
+    onMediaError,
   }: {
     src: string
     fileName: string
@@ -18,6 +19,7 @@
     waveform?: number[]
     mediaInfo?: MediaInfo
     spectrogram?: SpectrogramData
+    onMediaError?: (error: MediaError | null) => void
   } = $props()
 </script>
 
@@ -27,6 +29,6 @@
   useAudioPlayer(). jetplay opens a single file, so the body feeds it as the one
   track. See AudioPlayerBody.svelte.
 -->
-<AudioPlayer.Root>
+<AudioPlayer.Root {onMediaError}>
   <AudioPlayerBody {src} {fileName} {filePath} {extension} {waveform} {mediaInfo} {spectrogram} />
 </AudioPlayer.Root>

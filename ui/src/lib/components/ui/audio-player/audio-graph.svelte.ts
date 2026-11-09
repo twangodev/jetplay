@@ -3,6 +3,9 @@ export class AudioGraph {
 	audioContext = $state<AudioContext | null>(null);
 	analyser = $state<AnalyserNode | null>(null);
 	#source: MediaElementAudioSourceNode | null = null;
+	#scratchOutput: GainNode | null = null;
+	#scratchMedia: HTMLMediaElement | null = null;
+	#syncScratchVolume: (() => void) | null = null;
 
 	ensureContext(): AudioContext | null {
 		if (this.audioContext) return this.audioContext;
@@ -16,6 +19,25 @@ export class AudioGraph {
 			return null;
 		}
 		return this.audioContext;
+	}
+
+	ensureScratchOutput(media: HTMLMediaElement): GainNode | null {
+		const ctx = this.ensureContext();
+		if (!ctx) return null;
+		if (!this.#scratchOutput) {
+			this.#scratchOutput = ctx.createGain();
+			this.#scratchOutput.connect(ctx.destination);
+		}
+		if (this.#scratchMedia !== media) {
+			if (this.#syncScratchVolume) this.#scratchMedia?.removeEventListener("volumechange", this.#syncScratchVolume);
+			this.#scratchMedia = media;
+			this.#syncScratchVolume = () => {
+				this.#scratchOutput?.gain.setValueAtTime(media.muted ? 0 : media.volume, ctx.currentTime);
+			};
+			media.addEventListener("volumechange", this.#syncScratchVolume);
+		}
+		this.#syncScratchVolume?.();
+		return this.#scratchOutput;
 	}
 
 	ensureAnalyser(audioEl: HTMLAudioElement): AnalyserNode | null {
@@ -39,9 +61,13 @@ export class AudioGraph {
 	}
 
 	destroy(): void {
+		if (this.#syncScratchVolume) this.#scratchMedia?.removeEventListener("volumechange", this.#syncScratchVolume);
+		this.#scratchMedia = null;
+		this.#syncScratchVolume = null;
 		try {
 			this.#source?.disconnect();
 			this.analyser?.disconnect();
+			this.#scratchOutput?.disconnect();
 		} catch {
 			// nodes may already be gone
 		}
@@ -49,5 +75,6 @@ export class AudioGraph {
 		this.audioContext = null;
 		this.analyser = null;
 		this.#source = null;
+		this.#scratchOutput = null;
 	}
 }

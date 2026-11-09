@@ -68,7 +68,10 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 
 	function playScratch(position: number, speed: number): void {
 		const ctx = opts.graph.ensureContext();
-		if (!ctx || !scratchBuffer) return;
+		const audio = opts.player.audio;
+		if (!ctx || !scratchBuffer || !audio) return;
+		const output = opts.graph.ensureScratchOutput(audio);
+		if (!output) return;
 		if (ctx.state === "suspended") void ctx.resume().catch(() => {});
 		stopScratch();
 		try {
@@ -84,7 +87,7 @@ export function useScratchableWaveform<T = unknown>(opts: ScratchableWaveformOpt
 			filter.Q.value = 3;
 			source.playbackRate.value = Math.max(0.4, Math.min(2.5, 1 + speed * 0.5));
 			source.connect(filter);
-			filter.connect(ctx.destination);
+			filter.connect(output);
 			source.start(0, startTime, 0.06);
 			scratchSource = source;
 			scratchFilter = filter;
