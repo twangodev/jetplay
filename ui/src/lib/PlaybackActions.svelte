@@ -86,7 +86,7 @@
     event.preventDefault()
     const time = parseTimestamp(timestamp)
     if (time === null) {
-      error = 'Enter seconds, m:ss, or h:mm:ss, with up to three decimal places.'
+      error = 'Enter a duration, such as 1:23.450 or 1m 23.45s.'
       return
     }
     const limit = media?.duration ?? 0
@@ -211,7 +211,7 @@
         class="w-full rounded-md border bg-background px-2.5 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         oninput={() => (error = '')}
       />
-      <p id="{id}-hint" class="text-xs text-muted-foreground">Seconds, m:ss, or h:mm:ss · up to milliseconds</p>
+      <p id="{id}-hint" class="text-xs text-muted-foreground">Seconds, m:ss, h:mm:ss, or 1m 23.45s</p>
       {#if error}
         <p id="{id}-error" role="alert" class="text-xs text-error">{error}</p>
       {/if}

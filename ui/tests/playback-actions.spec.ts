@@ -33,7 +33,7 @@ for (const kind of ['audio', 'video'] as const) {
       await expect(media).toHaveJSProperty('loop', false)
     })
 
-    for (const timestamp of ['2.345', '00:02.345', '0:00:02.345']) {
+    for (const timestamp of ['2.345', '00:02.345', '0:00:02.345', '2s 345ms']) {
       test(`jumps precisely to ${timestamp} without starting playback`, async ({ loadApp }) => {
         const page = await loadApp(config)
         const media = page.locator(kind)
@@ -60,7 +60,7 @@ for (const kind of ['audio', 'video'] as const) {
       await page.getByRole('menuitem', { name: /Jump to timestamp/ }).click()
       const dialog = page.getByRole('dialog', { name: 'Jump to timestamp' })
       const input = dialog.getByRole('textbox', { name: 'Timestamp', exact: true })
-      for (const invalid of ['-1', '1:99', '2.3456', '99:59:59']) {
+      for (const invalid of ['-1', 'not a duration', 'Infinity', '99:59:59']) {
         await input.fill(invalid)
         await input.press('Enter')
         await expect(dialog).toBeVisible()

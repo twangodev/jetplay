@@ -1,17 +1,9 @@
-/** Seconds, m:ss, or h:mm:ss, with up to three fractional digits. */
+import parseDuration from 'parse-duration'
+
+/** Library-supported durations, expressed in nonnegative seconds suitable for seeking. */
 export function parseTimestamp(input: string): number | null {
-  const text = input.trim()
-  if (!/^\d+(?:\.\d{1,3})?$/.test(text) && !/^\d+:(?:[0-5]\d:)?[0-5]\d(?:\.\d{1,3})?$/.test(text)) {
-    return null
-  }
-
-  const [whole, fraction = ''] = text.split('.')
-  const parts = whole.split(':').map(Number)
-  if (parts.some((part) => !Number.isSafeInteger(part))) return null
-
-  const seconds = parts.reduce((total, part) => total * 60 + part, 0)
-  const milliseconds = seconds * 1000 + Number(fraction.padEnd(3, '0'))
-  return Number.isSafeInteger(milliseconds) ? milliseconds / 1000 : null
+  const seconds = parseDuration(input.trim(), 's')
+  return seconds !== null && seconds >= 0 && Number.isSafeInteger(Math.round(seconds * 1000)) ? seconds : null
 }
 
 /** Stable millisecond precision for jump inputs and copied file references. */

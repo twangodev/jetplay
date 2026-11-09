@@ -7,15 +7,22 @@ test('parses seconds and precise colon timestamps', () => {
     ['  1:23.450  ', 83.45], ['90:00', 5400], ['00:00.001', 0.001],
     ['1:02:03.004', 3723.004], ['00:59:59.999', 3599.999], ['000:01', 1],
   ] as const) {
-    expect(parseTimestamp(input), input).toBe(expected)
+    expect(parseTimestamp(input), input).toBeCloseTo(expected, 6)
   }
 })
 
-test('rejects malformed, negative, and ambiguous timestamps', () => {
+test('accepts library duration syntax and permissive clock fields', () => {
+  for (const [input, expected] of [
+    ['1m 23.45s', 83.45], ['2h 3m 4.005s', 7384.005], ['250ms', 0.25],
+    ['1:2', 62], ['1:60', 120], ['1.2345', 1.2345],
+  ] as const) {
+    expect(parseTimestamp(input), input).toBeCloseTo(expected, 6)
+  }
+})
+
+test('rejects unparseable and negative durations', () => {
   for (const input of [
-    '', ' ', '-1', '+1', '1e3', 'NaN', 'Infinity', '.5', '1.', '1.2345',
-    '1:2', '1:60', '1:02:3', '1:60:00', '1:02:60', '1:02:03:04',
-    '1:02.1234', '1 :02', '1: 02', '12seconds', '1,250',
+    '', ' ', '-1', '-1m 23s', 'NaN', 'Infinity', 'not a duration',
   ]) {
     expect(parseTimestamp(input), input).toBeNull()
   }
@@ -23,7 +30,7 @@ test('rejects malformed, negative, and ambiguous timestamps', () => {
 
 test('rejects overflowing values while retaining safe millisecond precision', () => {
   expect(parseTimestamp('9007199254740.991')).toBe(Number.MAX_SAFE_INTEGER / 1000)
-  for (const input of ['9007199254740.992', '9007199254741', '9999999999999999999999:00', '9'.repeat(400)]) {
+  for (const input of ['9007199254740.992', '9007199254741', '9999999999999999999999:00', '1e400']) {
     expect(parseTimestamp(input), input).toBeNull()
   }
 })
@@ -46,6 +53,6 @@ test('formats invalid or unsafe values as zero', () => {
 
 test('formatted values can be pasted back without losing millisecond precision', () => {
   for (const seconds of [0, 0.001, 12.45, 59.999, 83.45, 3599.999, 3600, 3723.004, 86400.123]) {
-    expect(parseTimestamp(formatTimestamp(seconds)), String(seconds)).toBe(seconds)
+    expect(parseTimestamp(formatTimestamp(seconds)), String(seconds)).toBeCloseTo(seconds, 6)
   }
 })

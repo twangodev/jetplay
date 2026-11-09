@@ -23,13 +23,7 @@ Supported formats include MP4, MKV, MOV, WebM, MP3, WAV, FLAC, AAC, and many mor
 
 ## Playback Tools
 
-Open the **…** menu beside the speed control in either player to:
-
-- **Repeat file** — loop the current audio or video.
-- **Jump to timestamp** — enter seconds, `m:ss`, or `h:mm:ss`, with up to three decimal places, such as `1:23.450`.
-- **Copy timestamp** — copy a reference such as `assets/demo.webm @ 00:12.450` for an issue or review. Files inside the project use a project-relative path.
-
-Volume, mute, and playback speed are remembered across files. Reopening a file restores its last saved position, paused. Completed files and files changed on disk start from the beginning. Playback memory is saved locally in the IDE.
+Use the **…** menu to repeat playback, jump to a timestamp or duration, or copy a timestamped file reference. Playback settings and per-file positions are remembered; files reopen paused.
 
 ## Installation
 
