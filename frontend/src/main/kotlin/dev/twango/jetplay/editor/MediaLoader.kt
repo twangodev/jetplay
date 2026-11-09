@@ -150,17 +150,7 @@ class MediaLoader(
             loadPlayer(url)
             return
         }
-        htmlLoader.load(
-            PlayerConfig(
-                state = "loading",
-                isVideo = source.isVideo,
-                fileName = source.fileName,
-                filePath = referencePath,
-                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
-                fileExtension = source.extension,
-                ui = uiStrings,
-            ),
-        )
+        htmlLoader.load(basePlayerConfig().copy(state = "loading"))
         scope.launch {
             val len = mediaLoadOperation(
                 timeout = RPC_READ_TIMEOUT,
@@ -189,33 +179,26 @@ class MediaLoader(
         }
     }
 
+    private fun basePlayerConfig(): PlayerConfig = PlayerConfig(
+        isVideo = source.isVideo,
+        fileName = source.fileName,
+        filePath = referencePath,
+        fileExtension = source.extension,
+        ui = uiStrings,
+        playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
+    )
+
     private fun loadPlayer(url: String) {
-        htmlLoader.load(
-            PlayerConfig(
-                isVideo = source.isVideo,
-                fileName = source.fileName,
-                filePath = referencePath,
-                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
-                fileExtension = source.extension,
-                mediaUrl = url,
-                ui = uiStrings,
-            ),
-        )
+        htmlLoader.load(basePlayerConfig().copy(mediaUrl = url))
         armLoadWatchdog(url)
     }
 
     private fun startTranscoding() {
         // No prior page exists yet, so render the loading shell directly instead of pushing a state change.
         htmlLoader.load(
-            PlayerConfig(
+            basePlayerConfig().copy(
                 state = "loading",
-                isVideo = source.isVideo,
-                fileName = source.fileName,
-                filePath = referencePath,
-                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
-                fileExtension = source.extension,
                 transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
-                ui = uiStrings,
             ),
         )
         scope.launch { runTranscode() }
@@ -271,15 +254,9 @@ class MediaLoader(
     private fun showTranscodingError() {
         // No page exists yet, so load the shell in the error state rather than pushing showError over JS.
         htmlLoader.load(
-            PlayerConfig(
+            basePlayerConfig().copy(
                 state = "error",
-                isVideo = source.isVideo,
-                fileName = source.fileName,
-                filePath = referencePath,
-                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
-                fileExtension = source.extension,
                 errorMessage = JetPlayBundle.message("error.transcoding.message"),
-                ui = uiStrings,
             ),
         )
         NotificationGroupManager.getInstance()
