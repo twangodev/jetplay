@@ -22,6 +22,8 @@ import dev.twango.jetplay.media.MediaServer
 import dev.twango.jetplay.media.RemoteRangeByteSource
 import dev.twango.jetplay.media.contentTypeForExtension
 import dev.twango.jetplay.media.mediaReferencePath
+import dev.twango.jetplay.playback.PlaybackMemoryService
+import dev.twango.jetplay.playback.playbackMemoryKey
 import dev.twango.jetplay.rpc.MediaAccessor
 import dev.twango.jetplay.rpc.TranscodeEvent
 import kotlinx.coroutines.CancellationException
@@ -89,11 +91,21 @@ class MediaLoader(
     private val fileId by lazy { source.file.rpcId() }
     private val projectId by lazy { project.projectId() }
     private val referencePath by lazy { mediaReferencePath(source.file.path, project.basePath) }
+    private val playbackMemory by lazy { service<PlaybackMemoryService>() }
+    private val playbackKey by lazy {
+        playbackMemoryKey(project.presentableUrl ?: project.locationHash, source.file.url)
+    }
+    private val playbackRevision by lazy { "${source.file.length}:${source.file.timeStamp}" }
 
     // Guards the one-shot lazy spectrogram compute against duplicate reveal requests.
     private val spectrogramRequested = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun load() {
+        // Bind persistence to the original source, never the temporary transcoded URL.
+        bridge.onPlaybackSave = { update ->
+            val unchanged = source.file.isValid && "${source.file.length}:${source.file.timeStamp}" == playbackRevision
+            playbackMemory.update(playbackKey, playbackRevision, if (unchanged) update else update.copy(positionSeconds = null))
+        }
         when {
             source.needsTranscoding -> startTranscoding()
             else -> playFromSource()
@@ -156,6 +168,7 @@ class MediaLoader(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 filePath = referencePath,
+                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
                 fileExtension = source.extension,
                 ui = uiStrings,
             ),
@@ -189,6 +202,7 @@ class MediaLoader(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 filePath = referencePath,
+                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
                 fileExtension = source.extension,
                 mediaUrl = url,
                 ui = uiStrings,
@@ -205,6 +219,7 @@ class MediaLoader(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 filePath = referencePath,
+                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
                 fileExtension = source.extension,
                 transcodingReason = JetPlayBundle.message("transcoding.reason", source.extension.uppercase()),
                 ui = uiStrings,
@@ -269,6 +284,7 @@ class MediaLoader(
                 isVideo = source.isVideo,
                 fileName = source.fileName,
                 filePath = referencePath,
+                playbackMemory = playbackMemory.snapshot(playbackKey, playbackRevision),
                 fileExtension = source.extension,
                 errorMessage = JetPlayBundle.message("error.transcoding.message"),
                 ui = uiStrings,

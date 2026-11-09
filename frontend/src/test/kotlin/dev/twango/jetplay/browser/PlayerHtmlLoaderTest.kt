@@ -1,5 +1,7 @@
 package dev.twango.jetplay.browser
 
+import dev.twango.jetplay.playback.PlaybackMemorySnapshot
+import dev.twango.jetplay.playback.PlaybackPreferences
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,6 +49,29 @@ class PlayerHtmlLoaderTest {
     @Test
     fun omitsClipboardFunctionWithoutNativeHandler() {
         assertFalse(buildScript(PlayerConfig()).contains("jetplayCopyText"))
+    }
+
+    @Test
+    fun includesStoredPlaybackMemory() {
+        val result = buildScript(
+            PlayerConfig(playbackMemory = PlaybackMemorySnapshot(PlaybackPreferences(0.3, true, 1.5), 12.45)),
+        )
+        assertTrue(result.contains("\"volume\":0.3"))
+        assertTrue(result.contains("\"muted\":true"))
+        assertTrue(result.contains("\"playbackRate\":1.5"))
+        assertTrue(result.contains("\"positionSeconds\":12.45"))
+    }
+
+    @Test
+    fun persistenceFunctionWaitsForNativeCallback() {
+        val result = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "", savePlaybackJs = "nativeSave(update, resolve, reject)")
+        assertTrue(result.contains("window.jetplaySavePlayback = function(update) { return new Promise(function(resolve, reject) {"))
+        assertTrue(result.contains("nativeSave(update, resolve, reject)"))
+    }
+
+    @Test
+    fun omitsPersistenceFunctionWithoutNativeHandler() {
+        assertFalse(buildScript(PlayerConfig()).contains("jetplaySavePlayback"))
     }
 
     @Test

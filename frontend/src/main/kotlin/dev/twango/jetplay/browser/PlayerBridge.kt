@@ -7,6 +7,8 @@ import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import dev.twango.jetplay.media.MediaInfo
 import dev.twango.jetplay.media.Spectrogram
+import dev.twango.jetplay.playback.PlaybackMemoryPayloads
+import dev.twango.jetplay.playback.PlaybackMemoryUpdate
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.handler.CefLoadHandlerAdapter
@@ -44,6 +46,22 @@ class PlayerBridge(private val browser: JBCefBrowser) {
     // Use the IDE clipboard because loadHTML pages cannot rely on browser clipboard permissions.
     val copyTextQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
         addHandler { text -> copyText(text) }
+    }
+
+    @Volatile
+    var onPlaybackSave: ((PlaybackMemoryUpdate) -> Unit)? = null
+
+    val savePlaybackQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase).apply {
+        addHandler { payload ->
+            try {
+                check(!disposed) { "Player has been closed" }
+                val update = PlaybackMemoryPayloads.parseUpdate(payload)
+                checkNotNull(onPlaybackSave) { "Playback memory is unavailable" }.invoke(update)
+                JBCefJSQuery.Response("")
+            } catch (e: Exception) {
+                JBCefJSQuery.Response(null, 1, e.message ?: "Unable to save playback")
+            }
+        }
     }
 
     private fun copyText(text: String): JBCefJSQuery.Response = try {
@@ -142,6 +160,8 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         openLinkQuery.dispose()
         spectrogramRequestQuery.dispose()
         copyTextQuery.dispose()
+        savePlaybackQuery.dispose()
+        onPlaybackSave = null
         browser.dispose()
     }
 }
