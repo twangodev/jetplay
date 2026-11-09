@@ -180,7 +180,10 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tests-result
-          path: ${{ github.workspace }}/build/reports/tests
+          path: |
+            build/reports/tests/
+            */build/reports/tests/
+            */build/test-results/test/
 
       # Upload Detekt SARIF for GitHub Code Scanning
       - name: Upload Detekt SARIF
