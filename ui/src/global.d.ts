@@ -1,3 +1,5 @@
+import type { PlaybackMemory, PlaybackMemoryUpdate } from './lib/playbackMemory'
+
 export {}
 
 declare global {
@@ -46,6 +48,7 @@ declare global {
       mediaUrl?: string
       fileName?: string
       filePath?: string
+      playbackMemory?: PlaybackMemory
       fileExtension?: string
       isVideo?: boolean
       state?: 'loading' | 'ready' | 'error'
@@ -74,6 +77,7 @@ declare global {
     __jetplayMediaInfo?: MediaInfo
     jetplayOpenLink?: (url: string) => void
     jetplayCopyText?: (text: string) => Promise<void>
+    jetplaySavePlayback?: (update: PlaybackMemoryUpdate) => Promise<void>
     // Lazy spectrogram: the page asks via jetplayRequestSpectrogram, the IDE answers via jetplaySpectrogram.
     jetplayRequestSpectrogram?: () => void
     jetplaySpectrogram?: (data: SpectrogramData) => void

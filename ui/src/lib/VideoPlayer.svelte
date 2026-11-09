@@ -22,6 +22,7 @@
   import { formatTime } from './formatTime'
   import { videoInfoRows, audioInfoRows, generalInfoRows } from './mediaInfoRows'
   import PlaybackActions from './PlaybackActions.svelte'
+  import { attachPlaybackMemory } from './playbackMemory'
 
   let {
     src,
@@ -67,6 +68,16 @@
   const hasMediaInfo = $derived(videoRows.length + audioRows.length + generalRows.length + tags.length > 0)
 
   const seekMax = $derived(Number.isFinite(duration) && duration > 0 ? duration : 0)
+
+  $effect(() => {
+    const media = videoEl
+    if (!media || !src) return
+    return attachPlaybackMemory(media, filePath, (preferences) => {
+      volume = preferences.volume
+      muted = preferences.muted
+      playbackRate = preferences.playbackRate
+    })
+  })
 
   function togglePlay() {
     if (videoEl.paused) void videoEl.play()

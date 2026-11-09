@@ -22,6 +22,7 @@
   import { formatTime } from './formatTime'
   import { formatBitrate, formatBytes, formatSampleRate } from './mediaInfoFormat'
   import { useScratchableWaveform } from './use-scratchable-waveform.svelte.js'
+  import { attachPlaybackMemory } from './playbackMemory'
 
   let {
     src,
@@ -214,12 +215,15 @@
     }
   })
 
-  // Mirror volume/mute onto the shared <audio>.
+  // The original file path stays stable when the playback URL changes after conversion.
   $effect(() => {
-    if (player.audio) {
-      player.audio.volume = volume
-      player.audio.muted = muted
-    }
+    const media = player.audio
+    if (!media || !src) return
+    return attachPlaybackMemory(media, filePath, (preferences) => {
+      volume = preferences.volume
+      muted = preferences.muted
+      player.playbackRate = preferences.playbackRate
+    })
   })
 
   onMount(() => {
@@ -233,10 +237,15 @@
 
   function toggleMute() {
     muted = !muted
+    if (player.audio) player.audio.muted = muted
   }
   function setVolume(v: number) {
     volume = v
     if (v > 0) muted = false
+    if (player.audio) {
+      player.audio.volume = volume
+      player.audio.muted = muted
+    }
   }
   function skipBack() {
     const a = player.audio
