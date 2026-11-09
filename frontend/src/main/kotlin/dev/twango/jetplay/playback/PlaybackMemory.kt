@@ -31,9 +31,22 @@ data class PlaybackMemorySnapshot(
 )
 
 @Serializable
-data class PlaybackMemoryUpdate(val preferences: PlaybackPreferences? = null, val positionSeconds: Double? = null) {
+data class PlaybackPreferencePatch(
+    val volume: Double? = null,
+    val muted: Boolean? = null,
+    val playbackRate: Double? = null,
+) {
+    fun applyTo(current: PlaybackPreferences): PlaybackPreferences = PlaybackPreferences(
+        volume = volume ?: current.volume,
+        muted = muted ?: current.muted,
+        playbackRate = playbackRate ?: current.playbackRate,
+    )
+}
+
+@Serializable
+data class PlaybackMemoryUpdate(val preferences: PlaybackPreferencePatch? = null, val positionSeconds: Double? = null) {
     internal fun validate() {
-        require(preferences?.isValid() != false) { "Invalid playback preferences" }
+        require(preferences?.applyTo(PlaybackPreferences())?.isValid() != false) { "Invalid playback preferences" }
         require(positionSeconds == null || (positionSeconds.isFinite() && positionSeconds >= 0.0)) {
             "Invalid playback position"
         }

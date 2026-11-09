@@ -10,7 +10,7 @@ export interface PlaybackMemory {
 }
 
 export interface PlaybackMemoryUpdate {
-  preferences?: PlaybackPreferences
+  preferences?: Partial<PlaybackPreferences>
   positionSeconds?: number
 }
 
@@ -49,10 +49,6 @@ function storedPositions(): Map<string, number> {
   return new Map(Object.entries(value).filter((entry): entry is [string, number] => validPosition(entry[1])))
 }
 
-function samePreferences(a: PlaybackPreferences, b: PlaybackPreferences): boolean {
-  return a.volume === b.volume && a.muted === b.muted && a.playbackRate === b.playbackRate
-}
-
 /** Attach after assigning src. The returned cleanup saves progress and removes every listener. */
 export function attachPlaybackMemory(
   media: HTMLMediaElement,
@@ -81,7 +77,10 @@ export function attachPlaybackMemory(
       if (nativeSave) {
         void nativeSave(update).catch(() => {})
       } else {
-        if (update.preferences) window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(update.preferences))
+        if (update.preferences) {
+          const latest = preferencesFrom(readStored(PREFERENCES_KEY) ?? initial?.preferences)
+          window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ ...latest, ...update.preferences }))
+        }
         if (update.positionSeconds !== undefined) {
           const positions = storedPositions()
           positions.delete(identity)
@@ -152,10 +151,14 @@ export function attachPlaybackMemory(
   function onPreferenceChange() {
     if (!isCurrentSource() || !preferencesReady) return
     const next = preferencesFrom({ volume: media.volume, muted: media.muted, playbackRate: media.playbackRate })
-    if (samePreferences(next, preferences)) return
+    const changes: Partial<PlaybackPreferences> = {}
+    if (next.volume !== preferences.volume) changes.volume = next.volume
+    if (next.muted !== preferences.muted) changes.muted = next.muted
+    if (next.playbackRate !== preferences.playbackRate) changes.playbackRate = next.playbackRate
+    if (Object.keys(changes).length === 0) return
     preferences = next
     onPreferences?.({ ...preferences })
-    persist({ preferences: { ...preferences } })
+    persist({ preferences: changes })
   }
 
   const onTimeUpdate = () => savePosition(false)

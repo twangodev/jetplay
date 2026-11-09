@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 type Preferences = { volume: number; muted: boolean; playbackRate: number }
 type PlaybackMemory = { preferences: Preferences; positionSeconds: number }
-type PlaybackUpdate = { preferences?: Preferences; positionSeconds?: number }
+type PlaybackUpdate = { preferences?: Partial<Preferences>; positionSeconds?: number }
 type MemoryWindow = Window & {
   __savedPlaybackMemory: PlaybackMemory
   __playbackMemoryWrites: PlaybackUpdate[]
@@ -25,7 +25,7 @@ async function loadWithMemory(
     window.jetplaySavePlayback = async (update) => {
       harness.__playbackMemoryWrites.push(structuredClone(update))
       if (rejectWrites) throw new Error('Playback storage unavailable')
-      if (update.preferences) harness.__savedPlaybackMemory.preferences = structuredClone(update.preferences)
+      if (update.preferences) harness.__savedPlaybackMemory.preferences = { ...harness.__savedPlaybackMemory.preferences, ...update.preferences }
       if (update.positionSeconds !== undefined) harness.__savedPlaybackMemory.positionSeconds = update.positionSeconds
     }
   }, { config, memory, rejectWrites })
@@ -123,6 +123,40 @@ for (const kind of ['audio', 'video'] as const) {
       expect(writes.some((update) => update.preferences !== undefined)).toBe(true)
       expect(writes.filter((update) => update.preferences !== undefined).every((update) => update.positionSeconds === undefined)).toBe(true)
       await expect(media).toHaveJSProperty('paused', true)
+    })
+
+    test('changing one preference in an older tab preserves other tabs changes', async ({ page, context }) => {
+      const second = await context.newPage()
+      let sharedPreferences: Preferences = { volume: 1, muted: false, playbackRate: 1 }
+      const initialize = async (tab: Page) => {
+        await tab.exposeFunction('saveSharedPlayback', (update: PlaybackUpdate) => {
+          if (update.preferences) sharedPreferences = { ...sharedPreferences, ...update.preferences }
+        })
+        await tab.addInitScript((config) => {
+          window.jetplay = {
+            ...config,
+            playbackMemory: { preferences: { volume: 1, muted: false, playbackRate: 1 }, positionSeconds: 0 },
+          }
+          window.jetplaySavePlayback = (update) => (window as any).saveSharedPlayback(update)
+        }, config)
+        await tab.goto('/')
+        await expect.poll(() => tab.locator(kind).evaluate((el: HTMLMediaElement) => el.readyState)).toBeGreaterThanOrEqual(2)
+      }
+      try {
+        await initialize(page)
+        await initialize(second)
+        await second.locator(kind).evaluate((el: HTMLMediaElement) => { el.volume = 0.2 })
+        await expect.poll(() => sharedPreferences.volume).toBe(0.2)
+        await page.bringToFront()
+        await page.getByRole('button', { name: 'Toggle mute', exact: true }).click()
+        await expect.poll(() => sharedPreferences).toEqual({ volume: 0.2, muted: true, playbackRate: 1 })
+        await second.bringToFront()
+        await second.getByRole('button', { name: 'Playback speed', exact: true }).click()
+        await second.getByRole('menuitem', { name: '2x', exact: true }).click()
+        await expect.poll(() => sharedPreferences).toEqual({ volume: 0.2, muted: true, playbackRate: 2 })
+      } finally {
+        await second.close()
+      }
     })
 
     test('seeking saves the new position without replacing preferences', async ({ page }) => {

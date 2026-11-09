@@ -52,9 +52,10 @@ class PlaybackMemoryService : PersistentStateComponent<PlaybackMemoryState> {
         update.validate()
         require(key.isNotBlank() && revision.isNotBlank()) { "Missing playback file identity" }
         update.preferences?.let {
-            memory.volume = it.volume
-            memory.muted = it.muted
-            memory.playbackRate = it.playbackRate
+            val merged = it.applyTo(PlaybackPreferences(memory.volume, memory.muted, memory.playbackRate))
+            memory.volume = merged.volume
+            memory.muted = merged.muted
+            memory.playbackRate = merged.playbackRate
         }
         update.positionSeconds?.let { position ->
             memory.positions.removeAll { it.key == key }

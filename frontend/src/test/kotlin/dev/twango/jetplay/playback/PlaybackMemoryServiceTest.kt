@@ -8,6 +8,19 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class PlaybackMemoryServiceTest {
+    private fun PlaybackPreferences.asPatch() = PlaybackPreferencePatch(volume, muted, playbackRate)
+
+    @Test
+    fun differentTabsMergeOnlyThePreferenceFieldsTheyChanged() {
+        val memory = PlaybackMemoryService()
+        memory.update("tab-b", "1", PlaybackMemoryUpdate(preferences = PlaybackPreferencePatch(volume = 0.2)))
+        memory.update("tab-a", "1", PlaybackMemoryUpdate(preferences = PlaybackPreferencePatch(muted = true)))
+        memory.update("tab-b", "1", PlaybackMemoryUpdate(preferences = PlaybackPreferencePatch(playbackRate = 2.0)))
+        assertEquals(PlaybackPreferences(0.2, true, 2.0), memory.snapshot("new-tab", "1").preferences)
+        memory.update("tab-a", "1", PlaybackMemoryUpdate(preferences = PlaybackPreferencePatch(muted = false)))
+        assertEquals(PlaybackPreferences(0.2, false, 2.0), memory.snapshot("new-tab", "1").preferences)
+    }
+
     @Test
     fun defaultsToFullVolumeNormalSpeedAndBeginning() {
         assertEquals(PlaybackMemorySnapshot(), PlaybackMemoryService().snapshot("source", "1:2"))
@@ -17,7 +30,7 @@ class PlaybackMemoryServiceTest {
     fun preferencesAreGlobalAndPositionsArePerOriginalFile() {
         val memory = PlaybackMemoryService()
         val preferences = PlaybackPreferences(0.35, true, 1.5)
-        memory.update("one", "1:2", PlaybackMemoryUpdate(preferences, 12.45))
+        memory.update("one", "1:2", PlaybackMemoryUpdate(preferences.asPatch(), 12.45))
         assertEquals(PlaybackMemorySnapshot(preferences, 12.45), memory.snapshot("one", "1:2"))
         assertEquals(PlaybackMemorySnapshot(preferences, 0.0), memory.snapshot("two", "1:2"))
     }
@@ -27,7 +40,7 @@ class PlaybackMemoryServiceTest {
         val memory = PlaybackMemoryService()
         val latestPreferences = PlaybackPreferences(0.2, true, 0.75)
         memory.update("one", "1:2", PlaybackMemoryUpdate(positionSeconds = 10.0))
-        memory.update("two", "1:2", PlaybackMemoryUpdate(preferences = latestPreferences))
+        memory.update("two", "1:2", PlaybackMemoryUpdate(preferences = latestPreferences.asPatch()))
         memory.update("one", "1:2", PlaybackMemoryUpdate(positionSeconds = 11.0))
         assertEquals(PlaybackMemorySnapshot(latestPreferences, 11.0), memory.snapshot("one", "1:2"))
     }
@@ -36,7 +49,7 @@ class PlaybackMemoryServiceTest {
     fun preferencesOnlyUpdateDoesNotChangePosition() {
         val memory = PlaybackMemoryService()
         memory.update("source", "1:2", PlaybackMemoryUpdate(positionSeconds = 12.45))
-        memory.update("source", "1:2", PlaybackMemoryUpdate(preferences = PlaybackPreferences(0.4, false, 2.0)))
+        memory.update("source", "1:2", PlaybackMemoryUpdate(preferences = PlaybackPreferencePatch(0.4, false, 2.0)))
         assertEquals(12.45, memory.snapshot("source", "1:2").positionSeconds, 0.0)
     }
 
@@ -64,7 +77,7 @@ class PlaybackMemoryServiceTest {
         val memory = PlaybackMemoryService()
         val preferences = PlaybackPreferences(0.45, true, 1.25)
         val key = playbackMemoryKey("remote://host/project", "remote://host/project/voice & music.wav")
-        memory.update(key, "100:200", PlaybackMemoryUpdate(preferences, 83.45))
+        memory.update(key, "100:200", PlaybackMemoryUpdate(preferences.asPatch(), 83.45))
         val xml = XmlSerializer.serialize(memory.state)
         val reopened = PlaybackMemoryService()
         reopened.loadState(XmlSerializer.deserialize(xml, PlaybackMemoryState::class.java))
@@ -103,7 +116,7 @@ class PlaybackMemoryServiceTest {
         val before = memory.snapshot("source", "1:2")
         for (position in listOf(-1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
             assertThrows(IllegalArgumentException::class.java) {
-                memory.update("source", "1:2", PlaybackMemoryUpdate(PlaybackPreferences(0.2, true, 2.0), position))
+                memory.update("source", "1:2", PlaybackMemoryUpdate(PlaybackPreferencePatch(0.2, true, 2.0), position))
             }
         }
         for (preferences in listOf(
@@ -112,7 +125,7 @@ class PlaybackMemoryServiceTest {
             PlaybackPreferences(playbackRate = Double.POSITIVE_INFINITY),
         )) {
             assertThrows(IllegalArgumentException::class.java) {
-                memory.update("source", "1:2", PlaybackMemoryUpdate(preferences, 3.0))
+                memory.update("source", "1:2", PlaybackMemoryUpdate(preferences.asPatch(), 3.0))
             }
         }
         assertEquals(before, memory.snapshot("source", "1:2"))
