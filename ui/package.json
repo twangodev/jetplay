@@ -23,6 +23,7 @@
     "@types/node": "^26.4.1",
     "bits-ui": "^2.18.1",
     "clsx": "^2.1.1",
+    "parse-duration": "^2.1.11",
     "shadcn-svelte": "^1.6.0",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.2",
