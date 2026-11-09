@@ -64,7 +64,7 @@ object MediaServer {
         runCatching { URI(url).path }.getOrNull()?.trimStart('/') ?: url.substringAfterLast('/')
 
     private fun start(): HttpServer {
-        val srv = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
+        val srv = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         srv.executor = Executors.newFixedThreadPool(MAX_WORKERS) { r ->
             Thread(r, "jetplay-media-server").apply { isDaemon = true }
         }
