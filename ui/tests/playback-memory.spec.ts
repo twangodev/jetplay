@@ -41,6 +41,42 @@ async function jumpTo(page: Page, timestamp: string) {
   await expect(dialog).not.toBeVisible()
 }
 
+for (const replaceSource of [false, true]) {
+  test(`cleanup preserves the original position ${replaceSource ? 'after source replacement' : 'before removing listeners'}`, async ({ page }) => {
+    await page.addInitScript(() => { window.jetplay = { state: 'error' } })
+    await page.goto('/')
+    const result = await page.evaluate(async (replaceSource) => {
+      const moduleUrl = '/src/lib/playbackMemory.ts'
+      const { attachPlaybackMemory } = await import(moduleUrl)
+      const writes: PlaybackUpdate[] = []
+      window.jetplaySavePlayback = async (update) => { writes.push(structuredClone(update)) }
+      const media = new Audio('/assets/sintel.ogg')
+      await new Promise<void>((resolve) => media.addEventListener('loadedmetadata', () => resolve(), { once: true }))
+      const cleanup = attachPlaybackMemory(media, 'original.ogg')
+      const seeked = new Promise<void>((resolve) => media.addEventListener('seeked', () => resolve(), { once: true }))
+      media.currentTime = 2
+      await seeked
+      if (replaceSource) media.src = '/assets/sintel.ogg?replacement'
+      media.currentTime = 3
+      cleanup()
+      const afterCleanup = structuredClone(writes)
+      cleanup()
+      media.volume = 0.2
+      media.playbackRate = 2
+      for (const event of ['loadedmetadata', 'durationchange', 'progress', 'canplay', 'volumechange', 'ratechange', 'timeupdate', 'seeked', 'pause', 'ended']) {
+        media.dispatchEvent(new Event(event))
+      }
+      window.dispatchEvent(new Event('pagehide'))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      media.removeAttribute('src')
+      media.load()
+      return { afterCleanup, afterEvents: writes }
+    }, replaceSource)
+    expect(result.afterCleanup.at(-1)).toEqual({ positionSeconds: replaceSource ? 2 : 3 })
+    expect(result.afterEvents).toEqual(result.afterCleanup)
+  })
+}
+
 for (const kind of ['audio', 'video'] as const) {
   test.describe(`${kind} playback memory`, () => {
     const config = {

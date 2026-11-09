@@ -115,10 +115,14 @@ export function attachPlaybackMemory(
     capturePosition()
     const now = Date.now()
     if (!force && now - lastPositionWriteAt < POSITION_WRITE_INTERVAL_MS) return
+    writePosition()
+  }
+
+  function writePosition() {
     if (lastPersistedPosition === lastPosition) return
     persist({ positionSeconds: lastPosition })
     lastPersistedPosition = lastPosition
-    lastPositionWriteAt = now
+    lastPositionWriteAt = Date.now()
   }
 
   function restorePosition() {
@@ -167,20 +171,18 @@ export function attachPlaybackMemory(
     if (!isCurrentSource() || !positionReady) return
     completed = !media.loop
     lastPosition = media.loop ? media.currentTime : 0
-    if (lastPersistedPosition !== lastPosition) {
-      persist({ positionSeconds: lastPosition })
-      lastPersistedPosition = lastPosition
-      lastPositionWriteAt = Date.now()
-    }
+    writePosition()
   }
 
-  media.addEventListener('loadedmetadata', onMetadata)
-  for (const event of ['durationchange', 'progress', 'canplay']) media.addEventListener(event, restorePosition)
-  for (const event of ['volumechange', 'ratechange']) media.addEventListener(event, onPreferenceChange)
-  media.addEventListener('timeupdate', onTimeUpdate)
-  for (const event of ['seeked', 'pause']) media.addEventListener(event, onPositionChange)
-  media.addEventListener('ended', onEnded)
-  window.addEventListener('pagehide', onPositionChange)
+  const listeners = new AbortController()
+  const options = { signal: listeners.signal }
+  media.addEventListener('loadedmetadata', onMetadata, options)
+  for (const event of ['durationchange', 'progress', 'canplay']) media.addEventListener(event, restorePosition, options)
+  for (const event of ['volumechange', 'ratechange']) media.addEventListener(event, onPreferenceChange, options)
+  media.addEventListener('timeupdate', onTimeUpdate, options)
+  for (const event of ['seeked', 'pause']) media.addEventListener(event, onPositionChange, options)
+  media.addEventListener('ended', onEnded, options)
+  window.addEventListener('pagehide', onPositionChange, options)
 
   applyPreferences()
   if (media.readyState >= 1) onMetadata()
@@ -188,14 +190,8 @@ export function attachPlaybackMemory(
   return () => {
     if (disposed) return
     capturePosition()
-    if (positionReady && lastPersistedPosition !== lastPosition) persist({ positionSeconds: lastPosition })
+    if (positionReady) writePosition()
     disposed = true
-    media.removeEventListener('loadedmetadata', onMetadata)
-    for (const event of ['durationchange', 'progress', 'canplay']) media.removeEventListener(event, restorePosition)
-    for (const event of ['volumechange', 'ratechange']) media.removeEventListener(event, onPreferenceChange)
-    media.removeEventListener('timeupdate', onTimeUpdate)
-    for (const event of ['seeked', 'pause']) media.removeEventListener(event, onPositionChange)
-    media.removeEventListener('ended', onEnded)
-    window.removeEventListener('pagehide', onPositionChange)
+    listeners.abort()
   }
 }
