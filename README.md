@@ -29,6 +29,8 @@ Open the **…** menu beside the speed control in either player to:
 - **Jump to timestamp** — enter seconds, `m:ss`, or `h:mm:ss`, with up to three decimal places, such as `1:23.450`.
 - **Copy timestamp** — copy a reference such as `assets/demo.webm @ 00:12.450` for an issue or review. Files inside the project use a project-relative path.
 
+Volume, mute, and playback speed are remembered across files. Reopening a file restores its last saved position, paused. Completed files and files changed on disk start from the beginning. Playback memory is saved locally in the IDE.
+
 ## Installation
 
 - Using the IDE built-in plugin system:
