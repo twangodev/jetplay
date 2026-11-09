@@ -118,13 +118,13 @@ class PlayerBridge(private val browser: JBCefBrowser) {
         executeJs("window.__jetplayProgress=$percent;window.jetplayUpdateProgress?.($percent)")
 
     fun mediaReady(url: String) {
-        val escaped = PlayerPayloads.escapeJs(url)
-        executeJs("window.__jetplayReadyUrl='$escaped';window.jetplayReady?.('$escaped')")
+        val json = PlayerPayloads.jsonString(url)
+        executeJs("window.__jetplayReadyUrl=$json;window.jetplayReady?.($json)")
     }
 
     fun showError(message: String) {
-        val escaped = PlayerPayloads.escapeJs(message)
-        executeJs("window.__jetplayError='$escaped';window.jetplayError?.('$escaped')")
+        val json = PlayerPayloads.jsonString(message)
+        executeJs("window.__jetplayError=$json;window.jetplayError?.($json)")
     }
 
     // Same stash-then-notify race guard as updateProgress.

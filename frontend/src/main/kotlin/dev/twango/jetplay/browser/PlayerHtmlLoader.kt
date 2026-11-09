@@ -1,7 +1,5 @@
 package dev.twango.jetplay.browser
 
-import dev.twango.jetplay.playback.PlaybackMemoryPayloads
-
 class PlayerHtmlLoader(private val bridge: PlayerBridge) {
 
     companion object {
@@ -27,29 +25,7 @@ class PlayerHtmlLoader(private val bridge: PlayerBridge) {
                 append("window.jetplaySavePlayback = function(update) { return new Promise(function(resolve, reject) { ")
                 append("$savePlaybackJs }); };")
             }
-            append("window.jetplay = {")
-            append("state: '${config.state}',")
-            append("isVideo: ${config.isVideo},")
-            append("fileName: '${PlayerPayloads.escapeJs(config.fileName)}',")
-            append("filePath: '${PlayerPayloads.escapeJs(config.filePath)}',")
-            append("fileExtension: '${PlayerPayloads.escapeJs(config.fileExtension)}',")
-            append("playbackMemory: ${PlaybackMemoryPayloads.snapshotJson(config.playbackMemory)},")
-            config.mediaUrl?.let { append("mediaUrl: '${PlayerPayloads.escapeJs(it)}',") }
-            if (config.errorMessage.isNotEmpty()) append("errorMessage: '${PlayerPayloads.escapeJs(config.errorMessage)}',")
-            if (config.transcodingReason.isNotEmpty()) append("transcodingReason: '${PlayerPayloads.escapeJs(config.transcodingReason)}',")
-            // Emit only non-empty strings so the Svelte component's own defaults stand for unset copy.
-            append("ui: {")
-            if (config.ui.transcodingLabel.isNotEmpty()) {
-                append("transcodingLabel: '${PlayerPayloads.escapeJs(config.ui.transcodingLabel)}',")
-            }
-            if (config.ui.transcodingTip.isNotEmpty()) {
-                append("transcodingTip: '${PlayerPayloads.escapeJs(config.ui.transcodingTip)}',")
-            }
-            if (config.ui.errorTitle.isNotEmpty()) {
-                append("errorTitle: '${PlayerPayloads.escapeJs(config.ui.errorTitle)}',")
-            }
-            append("},")
-            append("};</script>")
+            append("window.jetplay = ${PlayerPayloads.configJson(config)};</script>")
         }
     }
 

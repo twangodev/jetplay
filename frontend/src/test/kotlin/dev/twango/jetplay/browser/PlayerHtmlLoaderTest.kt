@@ -2,154 +2,96 @@ package dev.twango.jetplay.browser
 
 import dev.twango.jetplay.playback.PlaybackMemorySnapshot
 import dev.twango.jetplay.playback.PlaybackPreferences
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerHtmlLoaderTest {
+    private fun configJson(script: String): String = script.substringAfter("window.jetplay = ").substringBeforeLast(";</script>")
 
-    private fun buildScript(config: PlayerConfig, openLinkJs: String = "", spectrogramRequestJs: String = ""): String =
-        PlayerHtmlLoader.buildConfigScript(config, openLinkJs, spectrogramRequestJs)
+    private fun roundTrip(config: PlayerConfig): PlayerConfig = Json.decodeFromString(
+        configJson(PlayerHtmlLoader.buildConfigScript(config, "")),
+    )
 
     @Test
-    fun wrapsInScriptTags() {
-        val result = buildScript(PlayerConfig())
-        assertTrue(result.startsWith("<script>"))
-        assertTrue(result.endsWith("</script>"))
+    fun wrapsConfigurationInOneScriptElement() {
+        val script = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "")
+        assertTrue(script.startsWith("<script>"))
+        assertTrue(script.endsWith("</script>"))
+        assertEquals(PlayerConfig(), roundTrip(PlayerConfig()))
     }
 
     @Test
-    fun containsState() {
-        val result = buildScript(PlayerConfig(state = "loading"))
-        assertTrue(result.contains("state: 'loading'"))
-    }
-
-    @Test
-    fun containsFileName() {
-        val result = buildScript(PlayerConfig(fileName = "my-track"))
-        assertTrue(result.contains("fileName: 'my-track'"))
-    }
-
-    @Test
-    fun preservesOriginalReferencePathSeparatelyFromPlaybackUrl() {
-        val result = buildScript(
-            PlayerConfig(filePath = "assets/it's <demo>.mp4", mediaUrl = "http://127.0.0.1:1234/temporary.webm"),
+    fun sourceIdentityAndPlaybackUrlRemainSeparateAndLossless() {
+        val config = PlayerConfig(
+            state = "loading",
+            isVideo = true,
+            fileName = "it's <a> \"test\"\r.mp4",
+            filePath = "assets/it's <demo>\r.mp4",
+            fileExtension = "mp4",
+            mediaUrl = "http://127.0.0.1:1234/temporary.webm",
+            errorMessage = "Error\r\n</script>",
+            transcodingReason = "AAC needs conversion",
         )
-        assertTrue(result.contains("filePath: 'assets/it\\'s \\x3cdemo\\x3e.mp4'"))
-        assertTrue(result.contains("mediaUrl: 'http://127.0.0.1:1234/temporary.webm'"))
+        assertEquals(config, roundTrip(config))
     }
 
     @Test
-    fun clipboardFunctionWaitsForNativeCallback() {
-        val result = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "", copyTextJs = "nativeCopy(text, resolve, reject)")
-        assertTrue(result.contains("window.jetplayCopyText = function(text) { return new Promise(function(resolve, reject) {"))
-        assertTrue(result.contains("nativeCopy(text, resolve, reject)"))
+    fun inlineConfigurationCannotCloseTheScriptElement() {
+        val config = PlayerConfig(fileName = "</script><script>alert('filename')</script>")
+        val script = PlayerHtmlLoader.buildConfigScript(config, "")
+        assertFalse(configJson(script).contains('<'))
+        assertEquals(1, script.split("</script>").size - 1)
+        assertEquals(config, roundTrip(config))
     }
 
     @Test
-    fun omitsClipboardFunctionWithoutNativeHandler() {
-        assertFalse(buildScript(PlayerConfig()).contains("jetplayCopyText"))
+    fun optionalCopyIsOmittedSoBrowserDefaultsStillApply() {
+        val config = PlayerConfig(errorMessage = "", transcodingReason = "", ui = UiStrings("", "", ""))
+        val payload = Json.parseToJsonElement(configJson(PlayerHtmlLoader.buildConfigScript(config, ""))).jsonObject
+        assertFalse(payload.containsKey("mediaUrl"))
+        assertFalse(payload.containsKey("errorMessage"))
+        assertFalse(payload.containsKey("transcodingReason"))
+        assertTrue(payload.getValue("ui").jsonObject.isEmpty())
     }
 
     @Test
-    fun includesStoredPlaybackMemory() {
-        val result = buildScript(
-            PlayerConfig(playbackMemory = PlaybackMemorySnapshot(PlaybackPreferences(0.3, true, 1.5), 12.45)),
+    fun translatedCopyAndStoredPlaybackMemoryRoundTrip() {
+        val config = PlayerConfig(
+            ui = UiStrings("Converting...", "Use webm", "Error!"),
+            playbackMemory = PlaybackMemorySnapshot(PlaybackPreferences(0.3, true, 1.5), 12.45),
         )
-        assertTrue(result.contains("\"volume\":0.3"))
-        assertTrue(result.contains("\"muted\":true"))
-        assertTrue(result.contains("\"playbackRate\":1.5"))
-        assertTrue(result.contains("\"positionSeconds\":12.45"))
+        assertEquals(config, roundTrip(config))
     }
 
     @Test
-    fun persistenceFunctionWaitsForNativeCallback() {
-        val result = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "", savePlaybackJs = "nativeSave(update, resolve, reject)")
-        assertTrue(result.contains("window.jetplaySavePlayback = function(update) { return new Promise(function(resolve, reject) {"))
-        assertTrue(result.contains("nativeSave(update, resolve, reject)"))
-    }
-
-    @Test
-    fun omitsPersistenceFunctionWithoutNativeHandler() {
-        assertFalse(buildScript(PlayerConfig()).contains("jetplaySavePlayback"))
-    }
-
-    @Test
-    fun containsIsVideo() {
-        val resultTrue = buildScript(PlayerConfig(isVideo = true))
-        assertTrue(resultTrue.contains("isVideo: true"))
-
-        val resultFalse = buildScript(PlayerConfig(isVideo = false))
-        assertTrue(resultFalse.contains("isVideo: false"))
-    }
-
-    @Test
-    fun includesMediaUrlWhenPresent() {
-        val result = buildScript(PlayerConfig(mediaUrl = "file:///test.webm"))
-        assertTrue(result.contains("mediaUrl: 'file:///test.webm'"))
-    }
-
-    @Test
-    fun omitsMediaUrlWhenNull() {
-        val result = buildScript(PlayerConfig(mediaUrl = null))
-        assertFalse(result.contains("mediaUrl:"))
-    }
-
-    @Test
-    fun escapesSpecialCharsInFileName() {
-        val result = buildScript(PlayerConfig(fileName = "it's <a> \"test\""))
-        assertTrue(result.contains("fileName: 'it\\'s \\x3ca\\x3e \\\"test\\\"'"))
-    }
-
-    @Test
-    fun includesErrorMessageWhenNotEmpty() {
-        val result = buildScript(PlayerConfig(errorMessage = "Something broke"))
-        assertTrue(result.contains("errorMessage: 'Something broke'"))
-    }
-
-    @Test
-    fun omitsErrorMessageWhenEmpty() {
-        val result = buildScript(PlayerConfig(errorMessage = ""))
-        assertFalse(result.contains("errorMessage:"))
-    }
-
-    @Test
-    fun includesTranscodingReasonWhenNotEmpty() {
-        val result = buildScript(PlayerConfig(transcodingReason = "AAC needs conversion"))
-        assertTrue(result.contains("transcodingReason: 'AAC needs conversion'"))
-    }
-
-    @Test
-    fun omitsTranscodingReasonWhenEmpty() {
-        val result = buildScript(PlayerConfig(transcodingReason = ""))
-        assertFalse(result.contains("transcodingReason:"))
-    }
-
-    @Test
-    fun includesUiStrings() {
-        val result = buildScript(
-            PlayerConfig(
-                ui = UiStrings(
-                    transcodingLabel = "Converting...",
-                    transcodingTip = "Use webm",
-                    errorTitle = "Error!",
-                ),
-            ),
+    fun nativeClipboardAndPersistenceFunctionsWaitForTheirCallbacks() {
+        val script = PlayerHtmlLoader.buildConfigScript(
+            PlayerConfig(),
+            "",
+            copyTextJs = "nativeCopy(text, resolve, reject)",
+            savePlaybackJs = "nativeSave(update, resolve, reject)",
         )
-        assertTrue(result.contains("transcodingLabel: 'Converting...'"))
-        assertTrue(result.contains("transcodingTip: 'Use webm'"))
-        assertTrue(result.contains("errorTitle: 'Error!'"))
+        assertTrue(script.contains("window.jetplayCopyText = function(text) { return new Promise(function(resolve, reject) {"))
+        assertTrue(script.contains("nativeCopy(text, resolve, reject)"))
+        assertTrue(script.contains("window.jetplaySavePlayback = function(update) { return new Promise(function(resolve, reject) {"))
+        assertTrue(script.contains("nativeSave(update, resolve, reject)"))
     }
 
     @Test
-    fun includesOpenLinkJs() {
-        val result = buildScript(PlayerConfig(), openLinkJs = "console.log(url)")
-        assertTrue(result.contains("window.jetplayOpenLink = function(url) { console.log(url) }"))
+    fun browserPreviewDoesNotGetSuccessfulNoOpNativeStubs() {
+        val script = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "")
+        assertFalse(script.contains("jetplayCopyText"))
+        assertFalse(script.contains("jetplaySavePlayback"))
     }
 
     @Test
-    fun includesSpectrogramRequestJs() {
-        val result = buildScript(PlayerConfig(), spectrogramRequestJs = "requestIt()")
-        assertTrue(result.contains("window.jetplayRequestSpectrogram = function() { requestIt() }"))
+    fun includesOpenLinkAndSpectrogramCallbacks() {
+        val script = PlayerHtmlLoader.buildConfigScript(PlayerConfig(), "console.log(url)", "requestIt()")
+        assertTrue(script.contains("window.jetplayOpenLink = function(url) { console.log(url) }"))
+        assertTrue(script.contains("window.jetplayRequestSpectrogram = function() { requestIt() }"))
     }
 }
